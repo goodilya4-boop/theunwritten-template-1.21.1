@@ -69,6 +69,7 @@ public final class CharacterCommands {
             player.sendSystemMessage(Component.literal("Not enough points. Available: " + data.availablePoints()));
             return 0;
         }
+        CharacterAttributeSync.apply(player);
         player.sendSystemMessage(Component.literal(attribute + " = " + target + " (points left: " + data.availablePoints() + ")"));
         return 1;
     }

@@ -27,5 +27,11 @@
   "theunwritten.configuration.items": "Item List",
   "theunwritten.configuration.logDirtBlock": "Log Dirt Block",
   "theunwritten.configuration.magicNumberIntroduction": "Magic Number Text",
-  "theunwritten.configuration.magicNumber": "Magic Number"
+  "theunwritten.configuration.magicNumber": "Magic Number",
+
+  "key.theunwritten.character": "Open Character",
+  "key.categories.theunwritten": "The Unwritten",
+  "character.theunwritten.loading": "Loading character...",
+  "character.theunwritten.level": "Level: %s",
+  "character.theunwritten.points": "Points: %s"
 }

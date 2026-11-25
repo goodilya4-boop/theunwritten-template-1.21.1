@@ -4,6 +4,12 @@
   "item.theunwritten.example_item": "Пример предмета",
   "character.theunwritten.title": "Персонаж",
 
+  "character.theunwritten.loading": "Загрузка персонажа...",
+  "character.theunwritten.level": "Уровень: %s",
+  "character.theunwritten.points": "Очки: %s",
+  "key.theunwritten.character": "Открыть персонажа",
+  "key.categories.theunwritten": "The Unwritten",
+
   "race.theunwritten.human": "Человек",
   "race.theunwritten.human.description": "Распространённая и адаптивная раса без одной выраженной специализации.",
   "race.theunwritten.elf": "Эльф",
