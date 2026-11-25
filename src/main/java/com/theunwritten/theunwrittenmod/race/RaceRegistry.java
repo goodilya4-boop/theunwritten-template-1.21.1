@@ -24,13 +24,13 @@ public final class RaceRegistry {
         races.put(RaceId.HUMAN, make(RaceId.HUMAN, "Человек",
                 stats(1,1,1,1,1,1), resources(1,1,1), "adaptability"));
         races.put(RaceId.ELF, make(RaceId.ELF, "Эльф",
-                stats(.95,1.10,.95,1.05,1.05,1), resources(.95,.95,1.05), "natural_perception"));
+                stats(.90,1.10,.90,1.10,1.10,1), resources(.95,.95,1.05), "natural_perception"));
         races.put(RaceId.DWARF, make(RaceId.DWARF, "Гном",
-                stats(1,.95,1.10,1.05,1,.95), resources(1,1,1), "craft_engineering"));
+                stats(1,.90,1.10,1.10,1,.90), resources(1,1,1), "craft_engineering"));
         races.put(RaceId.ORC, make(RaceId.ORC, "Орк",
-                stats(1.10,1,1.10,1,1,.95), resources(1,1,.95), "harsh_survival"));
+                stats(1.10,1,1.10,1,1,.90), resources(1,1,.95), "harsh_survival"));
         races.put(RaceId.DRAGONBORN, make(RaceId.DRAGONBORN, "Драконорождённый",
-                stats(1.05,.95,1.10,1,1,1.05), resources(1.10,1.05,1.05), "dragon_blood"));
+                stats(1.10,.90,1.10,1,1,1.10), resources(1.10,1.05,1.05), "dragon_blood"));
         races.put(RaceId.VOIDBORN, make(RaceId.VOIDBORN, "Пустотный",
                 stats(1,1,1,1,1,1), resources(1,1,1), "void_affinity"));
         return Map.copyOf(races);
