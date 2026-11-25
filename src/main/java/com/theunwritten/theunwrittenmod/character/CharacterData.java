@@ -3,10 +3,7 @@ package com.theunwritten.theunwrittenmod.character;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 
-/**
- * Persistent server-authoritative Character Core state.
- * v0.1.0 implements only the character foundation; race and discipline data are intentionally deferred.
- */
+/** Persistent server-authoritative Character Core state. */
 public final class CharacterData {
     public static final int STARTING_ATTRIBUTE = 10;
     public static final Codec<CharacterData> CODEC = RecordCodecBuilder.create(instance -> instance.group(
@@ -21,18 +18,22 @@ public final class CharacterData {
             Codec.DOUBLE.optionalFieldOf("health", 100.0).forGetter(d -> d.health),
             Codec.DOUBLE.optionalFieldOf("stamina", 100.0).forGetter(d -> d.stamina),
             Codec.DOUBLE.optionalFieldOf("mana", 100.0).forGetter(d -> d.mana),
-            Codec.BOOL.optionalFieldOf("initialized", false).forGetter(d -> d.initialized)
+            Codec.BOOL.optionalFieldOf("initialized", false).forGetter(d -> d.initialized),
+            Race.CODEC.optionalFieldOf("race", Race.HUMAN).forGetter(d -> d.race)
     ).apply(instance, CharacterData::new));
 
     private int level, strength, dexterity, constitution, intelligence, wisdom, charisma, spentPoints;
     private double health, stamina, mana;
     private boolean initialized;
+    private Race race;
 
-    public CharacterData() { this(1, 10, 10, 10, 10, 10, 10, 0, 100, 100, 100, false); }
+    public CharacterData() {
+        this(1, 10, 10, 10, 10, 10, 10, 0, 100, 100, 100, false, Race.HUMAN);
+    }
 
     private CharacterData(int level, int strength, int dexterity, int constitution, int intelligence,
                          int wisdom, int charisma, int spentPoints, double health, double stamina,
-                         double mana, boolean initialized) {
+                         double mana, boolean initialized, Race race) {
         this.level = Math.max(1, level);
         this.strength = valid(strength); this.dexterity = valid(dexterity);
         this.constitution = valid(constitution); this.intelligence = valid(intelligence);
@@ -40,6 +41,7 @@ public final class CharacterData {
         this.spentPoints = Math.max(0, spentPoints);
         this.health = Math.max(0, health); this.stamina = Math.max(0, stamina);
         this.mana = Math.max(0, mana); this.initialized = initialized;
+        this.race = race == null ? Race.HUMAN : race;
     }
 
     private static int valid(int value) { return Math.max(1, value); }
@@ -55,6 +57,8 @@ public final class CharacterData {
     public double stamina() { return stamina; }
     public double mana() { return mana; }
     public boolean initialized() { return initialized; }
+    public Race race() { return race; }
+    public void setRace(Race race) { this.race = race == null ? Race.HUMAN : race; }
 
     public int earnedPoints() { return (int) Math.min(Integer.MAX_VALUE, 3L * (level - 1L)); }
     public int availablePoints() { return Math.max(0, earnedPoints() - spentPoints); }
