@@ -58,7 +58,7 @@ public final class CharacterData {
     public double mana() { return mana; }
     public boolean initialized() { return initialized; }
     public Race race() { return race; }
-    public void setRace(Race race) { this.race = race == null ? Race.HUMAN : race; }
+    public void setRace(Race race) {\n        this.race = race == null ? Race.HUMAN : race;\n        clampResourcesToMaxima();\n    }
 
     public int earnedPoints() { return (int) Math.min(Integer.MAX_VALUE, 3L * (level - 1L)); }
     public int availablePoints() { return Math.max(0, earnedPoints() - spentPoints); }
