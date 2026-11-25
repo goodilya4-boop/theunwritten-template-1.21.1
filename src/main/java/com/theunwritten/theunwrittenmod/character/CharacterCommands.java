@@ -80,8 +80,18 @@ public final class CharacterCommands {
         CharacterStats s = c.stats();
         player.sendSystemMessage(Component.literal("Character • Level " + c.level() + " • Points " + c.availablePoints()));
         player.sendSystemMessage(Component.translatable("command.theunwritten.race.current", c.race().displayName()));
-        player.sendSystemMessage(Component.literal("STR " + c.strength() + " | DEX " + c.dexterity() + " | CON " + c.constitution()
-                + " | INT " + c.intelligence() + " | WIS " + c.wisdom() + " | CHA " + c.charisma()));
+        player.sendSystemMessage(Component.literal(String.format(java.util.Locale.ROOT,
+                "Base STR %d | DEX %d | CON %d | INT %d | WIS %d | CHA %d",
+                c.strength(), c.dexterity(), c.constitution(), c.intelligence(), c.wisdom(), c.charisma())));
+        var racial = CharacterStats.racialAttributes(c);
+        player.sendSystemMessage(Component.literal(String.format(java.util.Locale.ROOT,
+                "Race STR %.2f | DEX %.2f | CON %.2f | INT %.2f | WIS %.2f | CHA %.2f",
+                racial.get(com.theunwritten.theunwrittenmod.race.Characteristic.STR),
+                racial.get(com.theunwritten.theunwrittenmod.race.Characteristic.DEX),
+                racial.get(com.theunwritten.theunwrittenmod.race.Characteristic.CON),
+                racial.get(com.theunwritten.theunwrittenmod.race.Characteristic.INT),
+                racial.get(com.theunwritten.theunwrittenmod.race.Characteristic.WIS),
+                racial.get(com.theunwritten.theunwrittenmod.race.Characteristic.CHA))));
         player.sendSystemMessage(Component.literal(String.format(java.util.Locale.ROOT,
                 "Force %.1f | Speed %.1f | Reaction %.1f | Coordination %.1f | Durability %.1f",
                 s.physicalForce(), s.speed(), s.reaction(), s.coordination(), s.bodyDurability())));
