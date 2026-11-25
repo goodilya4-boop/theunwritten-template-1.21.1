@@ -58,7 +58,10 @@ public final class CharacterData {
     public double mana() { return mana; }
     public boolean initialized() { return initialized; }
     public Race race() { return race; }
-    public void setRace(Race race) { this.race = race == null ? Race.HUMAN : race; }
+    public void setRace(Race race) {
+        this.race = race == null ? Race.HUMAN : race;
+        clampResourcesToMaxima();
+    }
 
     public int earnedPoints() { return (int) Math.min(Integer.MAX_VALUE, 3L * (level - 1L)); }
     public int availablePoints() { return Math.max(0, earnedPoints() - spentPoints); }
@@ -94,6 +97,12 @@ public final class CharacterData {
     public void setHealth(double value) { health = clamp(value, stats().maxHealth()); }
     public void setStamina(double value) { stamina = clamp(value, stats().maxStamina()); }
     public void setMana(double value) { mana = clamp(value, stats().maxMana()); }
+    public void clampResourcesToMaxima() {
+        CharacterStats current = stats();
+        health = clamp(health, current.maxHealth());
+        stamina = clamp(stamina, current.maxStamina());
+        mana = clamp(mana, current.maxMana());
+    }
     private static double clamp(double value, double max) { return Math.max(0, Math.min(value, max)); }
     public CharacterStats stats() { return CharacterStats.calculate(this); }
 }
