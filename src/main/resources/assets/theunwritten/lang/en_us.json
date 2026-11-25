@@ -1,7 +1,8 @@
 {
-  "itemGroup.theunwritten": "Example Mod Tab",
+  "itemGroup.theunwritten": "The Unwritten",
   "block.theunwritten.example_block": "Example Block",
   "item.theunwritten.example_item": "Example Item",
+  "character.theunwritten.title": "Character",
 
   "theunwritten.configuration.title": "The Unwritten Configs",
   "theunwritten.configuration.section.theunwritten.common.toml": "The Unwritten Configs",
