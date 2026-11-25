@@ -43,7 +43,7 @@ public final class CharacterScreen extends Screen {
     }
 
     @Override public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        graphics.fill(0, 0, width, height, 0xFF101010);
+        graphics.fill(0, 0, width, height, 0x70000000);
         int left = (width - 300) / 2, top = (height - 250) / 2;
         graphics.fill(left, top, left + 300, top + 250, 0xB0202020);
         graphics.drawCenteredString(font, title, width / 2, top + 10, 0xFFFFFF);
