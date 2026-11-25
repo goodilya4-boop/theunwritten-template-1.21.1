@@ -11,7 +11,7 @@ import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import org.lwjgl.glfw.GLFW;
 
-@EventBusSubscriber(modid = TheUnwritten.MODID, value = Dist.CLIENT, bus = EventBusSubscriber.Bus.MOD)
+@EventBusSubscriber(modid = TheUnwritten.MODID, value = Dist.CLIENT)
 public final class CharacterKeybinds {
     private CharacterKeybinds() {}
     public static final KeyMapping OPEN = new KeyMapping("key.theunwritten.character", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_K, "key.categories.theunwritten");
