@@ -56,7 +56,7 @@ public final class CharacterData {
     public double mana() { return mana; }
     public boolean initialized() { return initialized; }
 
-    public int earnedPoints() { return Math.multiplyExact(3, level - 1); }
+    public int earnedPoints() { return (int) Math.min(Integer.MAX_VALUE, 3L * (level - 1L)); }
     public int availablePoints() { return Math.max(0, earnedPoints() - spentPoints); }
 
     public int attribute(String id) {
