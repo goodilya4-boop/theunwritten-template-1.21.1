@@ -12,6 +12,14 @@ public final class CharacterCommands {
     public static void register(RegisterCommandsEvent event) {
         event.getDispatcher().register(Commands.literal("character")
             .then(Commands.literal("stats").executes(ctx -> show(ctx.getSource().getPlayerOrException())))
+            .then(Commands.literal("race")
+                .executes(ctx -> showRace(ctx.getSource().getPlayerOrException()))
+                .then(Commands.literal("human").executes(ctx -> chooseRace(ctx.getSource().getPlayerOrException(), Race.HUMAN)))
+                .then(Commands.literal("elf").executes(ctx -> chooseRace(ctx.getSource().getPlayerOrException(), Race.ELF)))
+                .then(Commands.literal("dwarf").executes(ctx -> chooseRace(ctx.getSource().getPlayerOrException(), Race.DWARF)))
+                .then(Commands.literal("orc").executes(ctx -> chooseRace(ctx.getSource().getPlayerOrException(), Race.ORC)))
+                .then(Commands.literal("dragonborn").executes(ctx -> chooseRace(ctx.getSource().getPlayerOrException(), Race.DRAGONBORN)))
+                .then(Commands.literal("voidborn").executes(ctx -> chooseRace(ctx.getSource().getPlayerOrException(), Race.VOIDBORN))))
             .then(Commands.literal("level")
                 .then(Commands.argument("level", IntegerArgumentType.integer(1))
                     .requires(source -> source.hasPermission(2))
@@ -38,6 +46,22 @@ public final class CharacterCommands {
                     .executes(ctx -> spend(ctx.getSource().getPlayerOrException(), "charisma", ctx.getArgument("amount", Integer.class)))))));
     }
 
+    private static int chooseRace(ServerPlayer player, Race race) {
+        CharacterData data = player.getData(CharacterAttachments.CHARACTER);
+        data.setRace(race);
+        player.sendSystemMessage(Component.translatable("command.theunwritten.race.selected", race.displayName()));
+        player.sendSystemMessage(race.description());
+        return 1;
+    }
+
+    private static int showRace(ServerPlayer player) {
+        CharacterData data = player.getData(CharacterAttachments.CHARACTER);
+        player.sendSystemMessage(Component.translatable("command.theunwritten.race.current", data.race().displayName()));
+        player.sendSystemMessage(Component.translatable("command.theunwritten.race.help"));
+        player.sendSystemMessage(data.race().description());
+        return 1;
+    }
+
     private static int spend(ServerPlayer player, String attribute, int amount) {
         CharacterData data = player.getData(CharacterAttachments.CHARACTER);
         int target = Math.addExact(data.attribute(attribute), amount);
@@ -54,6 +78,7 @@ public final class CharacterCommands {
         CharacterData c = player.getData(CharacterAttachments.CHARACTER);
         CharacterStats s = c.stats();
         player.sendSystemMessage(Component.literal("Character • Level " + c.level() + " • Points " + c.availablePoints()));
+        player.sendSystemMessage(Component.translatable("command.theunwritten.race.current", c.race().displayName()));
         player.sendSystemMessage(Component.literal("STR " + c.strength() + " | DEX " + c.dexterity() + " | CON " + c.constitution()
                 + " | INT " + c.intelligence() + " | WIS " + c.wisdom() + " | CHA " + c.charisma()));
         player.sendSystemMessage(Component.literal(String.format(java.util.Locale.ROOT,

@@ -3,6 +3,24 @@
   "block.theunwritten.example_block": "Example Block",
   "item.theunwritten.example_item": "Example Item",
   "character.theunwritten.title": "Character",
+
+  "race.theunwritten.human": "Human",
+  "race.theunwritten.human.description": "A common, adaptable people with no single defining specialization.",
+  "race.theunwritten.elf": "Elf",
+  "race.theunwritten.elf.description": "Long-lived and attuned to natural forces. This affinity may help perceive magic, but magic still requires study. Their physiology and lifestyle favor precision and swift movement.",
+  "race.theunwritten.dwarf": "Dwarf",
+  "race.theunwritten.dwarf.description": "A people shaped by generations of demanding work and a culture of engineering, craft, and creation; known for resilience and endurance.",
+  "race.theunwritten.orc": "Orc",
+  "race.theunwritten.orc.description": "Nomads shaped by survival in a dangerous region. Their traditions and rites are often misunderstood; their limited technology reflects a mobile life, not a lack of intelligence.",
+  "race.theunwritten.dragonborn": "Dragonborn",
+  "race.theunwritten.dragonborn.description": "Their legend claims descent from true dragons. In truth, their ancestors underwent artificial evolution and received dragon blood and power. Scales, tails, horns, and resistances remain as traces of that legacy.",
+  "race.theunwritten.voidborn": "Voidborn",
+  "race.theunwritten.voidborn.description": "Rare manifestations of the Void, distinct from the Void itself. Often humanlike, with pale gray skin, white or silver hair, and unusual glowing eyes. Misunderstood and frequently weak, they may settle among any people.",
+
+  "command.theunwritten.race.selected": "Race selected: %s",
+  "command.theunwritten.race.current": "Current race: %s",
+  "command.theunwritten.race.help": "Test command: /character race <human|elf|dwarf|orc|dragonborn|voidborn>",
+
   "theunwritten.configuration.title": "The Unwritten Configs",
   "theunwritten.configuration.section.theunwritten.common.toml": "The Unwritten Configs",
   "theunwritten.configuration.section.theunwritten.common.toml.title": "The Unwritten Configs",
@@ -10,6 +28,7 @@
   "theunwritten.configuration.logDirtBlock": "Log Dirt Block",
   "theunwritten.configuration.magicNumberIntroduction": "Magic Number Text",
   "theunwritten.configuration.magicNumber": "Magic Number",
+
   "key.theunwritten.character": "Open Character",
   "key.categories.theunwritten": "The Unwritten",
   "character.theunwritten.loading": "Loading character...",

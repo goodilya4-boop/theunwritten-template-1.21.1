@@ -3,9 +3,35 @@
   "block.theunwritten.example_block": "Пример блока",
   "item.theunwritten.example_item": "Пример предмета",
   "character.theunwritten.title": "Персонаж",
+
   "character.theunwritten.loading": "Загрузка персонажа...",
   "character.theunwritten.level": "Уровень: %s",
   "character.theunwritten.points": "Очки: %s",
   "key.theunwritten.character": "Открыть персонажа",
-  "key.categories.theunwritten": "The Unwritten"
+  "key.categories.theunwritten": "The Unwritten",
+
+  "race.theunwritten.human": "Человек",
+  "race.theunwritten.human.description": "Распространённая и адаптивная раса без одной выраженной специализации.",
+  "race.theunwritten.elf": "Эльф",
+  "race.theunwritten.elf.description": "Долгожители, связанные с природными силами. Эта связь помогает воспринимать магию, но магию всё равно необходимо изучать. Их физиология и образ жизни благоприятствуют точности и быстрому движению.",
+  "race.theunwritten.dwarf": "Гном",
+  "race.theunwritten.dwarf.description": "Народ, чья физиология сформировалась поколениями тяжёлого труда, а культура основана на инженерии, ремесле и созидании. Отличаются стойкостью и выносливостью.",
+  "race.theunwritten.orc": "Орк",
+  "race.theunwritten.orc.description": "Кочевой народ, сформировавшийся благодаря выживанию в опасном регионе. Их обряды и традиции часто неправильно понимают. Ограниченный технологический уровень связан с кочевьем, а не с недостатком ума.",
+  "race.theunwritten.dragonborn": "Драконорождённый",
+  "race.theunwritten.dragonborn.description": "Легенда утверждает, что они потомки истинных драконов. На деле их предки прошли искусственную эволюцию и получили драконью кровь и силу. Чешуя, хвост, рога и устойчивости — следы этого наследия.",
+  "race.theunwritten.voidborn": "Пустотный",
+  "race.theunwritten.voidborn.description": "Редкие проявления Пустоты, отдельные от самой Пустоты. Обычно имеют человеческие черты, светло-серую кожу, белые или серебристые волосы и необычные светящиеся глаза. Часто непоняты и слабы; могут жить среди представителей любой расы.",
+
+  "command.theunwritten.race.selected": "Выбрана раса: %s",
+  "command.theunwritten.race.current": "Текущая раса: %s",
+  "command.theunwritten.race.help": "Тестовая команда: /character race <human|elf|dwarf|orc|dragonborn|voidborn>",
+
+  "theunwritten.configuration.title": "Настройки The Unwritten",
+  "theunwritten.configuration.section.theunwritten.common.toml": "Настройки The Unwritten",
+  "theunwritten.configuration.section.theunwritten.common.toml.title": "Настройки The Unwritten",
+  "theunwritten.configuration.items": "Список предметов",
+  "theunwritten.configuration.logDirtBlock": "Логировать блок земли",
+  "theunwritten.configuration.magicNumberIntroduction": "Текст магического числа",
+  "theunwritten.configuration.magicNumber": "Магическое число"
 }
