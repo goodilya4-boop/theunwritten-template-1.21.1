@@ -54,6 +54,7 @@ public final class CharacterNetwork {
             };
             if (data.availablePoints() > 0) data.setAttribute(id, data.attribute(id) + 1);
         }
+        CharacterAttributeSync.apply(player);
         CharacterStats s = data.stats();
         PacketDistributor.sendToPlayer(player, new Data(2, -1, data.level(), data.availablePoints(),
                 data.strength(), data.dexterity(), data.constitution(), data.intelligence(), data.wisdom(), data.charisma(),
