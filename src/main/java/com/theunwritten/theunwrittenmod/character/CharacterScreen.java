@@ -31,6 +31,12 @@ public final class CharacterScreen extends Screen {
                 0,0,0,0,0,0, 0,0,0,0,0,0, 0,0,0,0,0,0));
     }
 
+    /** Prevent vanilla Screen background rendering from applying its fullscreen blur. */
+    @Override
+    public void renderBackground(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        // The screen draws its own dim layer and panel in render().
+    }
+
     public void update(CharacterNetwork.Data value) {
         data = value;
         for (Button button : plus) if (button != null) button.active = value.points() > 0;
