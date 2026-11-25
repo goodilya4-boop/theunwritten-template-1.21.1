@@ -49,7 +49,7 @@ public final class CharacterCommands {
     private static int chooseRace(ServerPlayer player, Race race) {
         CharacterData data = player.getData(CharacterAttachments.CHARACTER);
         data.setRace(race);
-        player.sendSystemMessage(Component.translatable("command.theunwritten.race.selected", race.displayName()));
+        CharacterAttributeSync.apply(player);\n        player.sendSystemMessage(Component.translatable("command.theunwritten.race.selected", race.displayName()));
         player.sendSystemMessage(race.description());
         return 1;
     }
