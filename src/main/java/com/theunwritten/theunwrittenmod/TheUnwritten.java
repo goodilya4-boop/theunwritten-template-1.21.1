@@ -52,6 +52,7 @@ public class TheUnwritten {
         CharacterAttachments.TYPES.register(modEventBus);
         modEventBus.addListener(CharacterNetwork::register);
         NeoForge.EVENT_BUS.addListener(CharacterEvents::onPlayerJoin);
+        NeoForge.EVENT_BUS.addListener(CharacterEvents::onPlayerTick);
         NeoForge.EVENT_BUS.addListener(CharacterCommands::register);
         modEventBus.addListener(this::commonSetup);
         BLOCKS.register(modEventBus);

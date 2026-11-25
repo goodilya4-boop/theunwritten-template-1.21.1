@@ -16,7 +16,7 @@ public final class CharacterScreen extends Screen {
 
     @Override protected void init() {
         int left = (width - 300) / 2;
-        int top = (height - 210) / 2;
+        int top = (height - 250) / 2;
         for (int i = 0; i < 6; i++) {
             final int index = i;
             plus[i] = addRenderableWidget(Button.builder(Component.literal("+"), b -> {
@@ -26,9 +26,15 @@ public final class CharacterScreen extends Screen {
             plus[i].active = false;
         }
         addRenderableWidget(Button.builder(Component.translatable("gui.done"), b -> onClose())
-                .bounds(left + 110, top + 185, 80, 20).build());
+                .bounds(left + 110, top + 222, 80, 20).build());
         PacketDistributor.sendToServer(new CharacterNetwork.Data(0, -1, 0, 0,
                 0,0,0,0,0,0, 0,0,0,0,0,0, 0,0,0,0,0,0));
+    }
+
+    /** Prevent vanilla Screen background rendering from applying its fullscreen blur. */
+    @Override
+    public void renderBackground(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        // The screen draws its own dim layer and panel in render().
     }
 
     public void update(CharacterNetwork.Data value) {
@@ -37,9 +43,9 @@ public final class CharacterScreen extends Screen {
     }
 
     @Override public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        renderBackground(graphics, mouseX, mouseY, partialTick);
-        int left = (width - 300) / 2, top = (height - 210) / 2;
-        graphics.fill(left, top, left + 300, top + 210, 0xB0202020);
+        graphics.fill(0, 0, width, height, 0x70000000);
+        int left = (width - 300) / 2, top = (height - 250) / 2;
+        graphics.fill(left, top, left + 300, top + 250, 0xB0202020);
         graphics.drawCenteredString(font, title, width / 2, top + 10, 0xFFFFFF);
         if (data == null) {
             graphics.drawCenteredString(font, Component.translatable("character.theunwritten.loading"), width / 2, top + 90, 0xCCCCCC);
@@ -49,12 +55,12 @@ public final class CharacterScreen extends Screen {
             int[] values = {data.strength(),data.dexterity(),data.constitution(),data.intelligence(),data.wisdom(),data.charisma()};
             for (int i=0;i<6;i++) graphics.drawString(font, SHORT[i] + "  " + NAMES[i] + ": " + values[i], left + 15, top + 47 + i*20, 0xFFFFFF);
             graphics.drawString(font, String.format(java.util.Locale.ROOT, "Force %.1f | Speed %.1f | Reaction %.1f",
-                    data.force(), data.speed(), data.reaction()), left + 12, top + 171, 0xC8C8C8);
+                    data.force(), data.speed(), data.reaction()), left + 12, top + 180, 0xC8C8C8);
             graphics.drawString(font, String.format(java.util.Locale.ROOT, "Coord. %.1f | Durability %.1f | Will %.1f",
-                    data.coordination(), data.durability(), data.willpower()), left + 12, top + 181, 0xC8C8C8);
+                    data.coordination(), data.durability(), data.willpower()), left + 12, top + 194, 0xC8C8C8);
             graphics.drawString(font, String.format(java.util.Locale.ROOT, "HP %.0f/%.0f   ST %.0f/%.0f   MP %.0f/%.0f",
                     data.health(), data.maxHealth(), data.stamina(), data.maxStamina(), data.mana(), data.maxMana()),
-                    left + 12, top + 160, 0xA8D8FF);
+                    left + 12, top + 166, 0xA8D8FF);
         }
         super.render(graphics, mouseX, mouseY, partialTick);
     }
