@@ -21,14 +21,14 @@ public final class CharacterScreen extends Screen {
             final int index = i;
             plus[i] = addRenderableWidget(Button.builder(Component.literal("+"), b -> {
                 PacketDistributor.sendToServer(new CharacterNetwork.Data(1, index, 0, 0,
-                        0,0,0,0,0,0, 0,0,0,0,0,0, 0,0,0,0,0,0));
+                        0,0,0,0,0,0, 0,0,0,0,0,0, 0,0,0,0,0,0, 0,0,0,0,0,0));
             }).bounds(left + 255, top + 43 + i * 20, 24, 18).build());
             plus[i].active = false;
         }
         addRenderableWidget(Button.builder(Component.translatable("gui.done"), b -> onClose())
                 .bounds(left + 110, top + 222, 80, 20).build());
         PacketDistributor.sendToServer(new CharacterNetwork.Data(0, -1, 0, 0,
-                0,0,0,0,0,0, 0,0,0,0,0,0, 0,0,0,0,0,0));
+                0,0,0,0,0,0, 0,0,0,0,0,0, 0,0,0,0,0,0, 0,0,0,0,0,0));
     }
 
     /** Prevent vanilla Screen background rendering from applying its fullscreen blur. */
@@ -52,8 +52,8 @@ public final class CharacterScreen extends Screen {
         } else {
             graphics.drawString(font, Component.translatable("character.theunwritten.level", data.level()), left + 12, top + 28, 0xE0E0E0);
             graphics.drawString(font, Component.translatable("character.theunwritten.points", data.points()), left + 155, top + 28, 0xE0E0E0);
-            int[] values = {data.strength(),data.dexterity(),data.constitution(),data.intelligence(),data.wisdom(),data.charisma()};
-            for (int i=0;i<6;i++) graphics.drawString(font, SHORT[i] + "  " + NAMES[i] + ": " + values[i], left + 15, top + 47 + i*20, 0xFFFFFF);
+            double[] values = {data.racialStrength(),data.racialDexterity(),data.racialConstitution(),data.racialIntelligence(),data.racialWisdom(),data.racialCharisma()};
+            for (int i=0;i<6;i++) graphics.drawString(font, SHORT[i] + "  " + NAMES[i] + ": " + String.format(java.util.Locale.ROOT, "%.2f", values[i]), left + 15, top + 47 + i*20, 0xFFFFFF);
             graphics.drawString(font, String.format(java.util.Locale.ROOT, "Force %.1f | Speed %.1f | Reaction %.1f",
                     data.force(), data.speed(), data.reaction()), left + 12, top + 180, 0xC8C8C8);
             graphics.drawString(font, String.format(java.util.Locale.ROOT, "Coord. %.1f | Durability %.1f | Will %.1f",

@@ -18,6 +18,7 @@ public final class CharacterNetwork {
 
     public record Data(int action, int attribute, int level, int points,
                        int strength, int dexterity, int constitution, int intelligence, int wisdom, int charisma,
+                       double racialStrength, double racialDexterity, double racialConstitution, double racialIntelligence, double racialWisdom, double racialCharisma,
                        double health, double maxHealth, double stamina, double maxStamina, double mana, double maxMana,
                        double force, double speed, double reaction, double coordination, double durability, double willpower)
             implements CustomPacketPayload {
@@ -27,12 +28,14 @@ public final class CharacterNetwork {
                     buf.writeVarInt(d.action); buf.writeVarInt(d.attribute); buf.writeVarInt(d.level); buf.writeVarInt(d.points);
                     buf.writeVarInt(d.strength); buf.writeVarInt(d.dexterity); buf.writeVarInt(d.constitution);
                     buf.writeVarInt(d.intelligence); buf.writeVarInt(d.wisdom); buf.writeVarInt(d.charisma);
+                    buf.writeDouble(d.racialStrength); buf.writeDouble(d.racialDexterity); buf.writeDouble(d.racialConstitution); buf.writeDouble(d.racialIntelligence); buf.writeDouble(d.racialWisdom); buf.writeDouble(d.racialCharisma);
                     buf.writeDouble(d.health); buf.writeDouble(d.maxHealth); buf.writeDouble(d.stamina); buf.writeDouble(d.maxStamina);
                     buf.writeDouble(d.mana); buf.writeDouble(d.maxMana); buf.writeDouble(d.force); buf.writeDouble(d.speed);
                     buf.writeDouble(d.reaction); buf.writeDouble(d.coordination); buf.writeDouble(d.durability); buf.writeDouble(d.willpower);
                 },
                 buf -> new Data(buf.readVarInt(), buf.readVarInt(), buf.readVarInt(), buf.readVarInt(),
                         buf.readVarInt(), buf.readVarInt(), buf.readVarInt(), buf.readVarInt(), buf.readVarInt(), buf.readVarInt(),
+                        buf.readDouble(), buf.readDouble(), buf.readDouble(), buf.readDouble(), buf.readDouble(), buf.readDouble(),
                         buf.readDouble(), buf.readDouble(), buf.readDouble(), buf.readDouble(), buf.readDouble(), buf.readDouble(),
                         buf.readDouble(), buf.readDouble(), buf.readDouble(), buf.readDouble(), buf.readDouble(), buf.readDouble()));
         @Override public Type<? extends CustomPacketPayload> type() { return TYPE; }
@@ -56,8 +59,10 @@ public final class CharacterNetwork {
         }
         CharacterAttributeSync.apply(player);
         CharacterStats s = data.stats();
+        var racial = CharacterStats.racialAttributes(data);
         PacketDistributor.sendToPlayer(player, new Data(2, -1, data.level(), data.availablePoints(),
                 data.strength(), data.dexterity(), data.constitution(), data.intelligence(), data.wisdom(), data.charisma(),
+                racial.get(com.theunwritten.theunwrittenmod.race.Characteristic.STR), racial.get(com.theunwritten.theunwrittenmod.race.Characteristic.DEX), racial.get(com.theunwritten.theunwrittenmod.race.Characteristic.CON), racial.get(com.theunwritten.theunwrittenmod.race.Characteristic.INT), racial.get(com.theunwritten.theunwrittenmod.race.Characteristic.WIS), racial.get(com.theunwritten.theunwrittenmod.race.Characteristic.CHA),
                 data.health(), s.maxHealth(), data.stamina(), s.maxStamina(), data.mana(), s.maxMana(),
                 s.physicalForce(), s.speed(), s.reaction(), s.coordination(), s.bodyDurability(), s.willpower()));
     }
