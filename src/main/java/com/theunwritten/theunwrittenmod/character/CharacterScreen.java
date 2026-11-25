@@ -28,7 +28,7 @@ public final class CharacterScreen extends Screen {
         addRenderableWidget(Button.builder(Component.translatable("gui.done"), b -> onClose())
                 .bounds(left + 110, top + 222, 80, 20).build());
         PacketDistributor.sendToServer(new CharacterNetwork.Data(0, -1, 0, 0,
-                0,0,0,0,0,0, 0,0,0,0,0,0, 0,0,0,0,0,0));
+                0,0,0,0,0,0, 0,0,0,0,0,0, 0,0,0,0,0,0, 0,0,0,0,0,0));
     }
 
     /** Prevent vanilla Screen background rendering from applying its fullscreen blur. */
