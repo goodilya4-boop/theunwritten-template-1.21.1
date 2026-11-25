@@ -1,0 +1,11 @@
+{
+  "itemGroup.theunwritten": "The Unwritten",
+  "block.theunwritten.example_block": "Пример блока",
+  "item.theunwritten.example_item": "Пример предмета",
+  "character.theunwritten.title": "Персонаж",
+  "character.theunwritten.loading": "Загрузка персонажа...",
+  "character.theunwritten.level": "Уровень: %s",
+  "character.theunwritten.points": "Очки: %s",
+  "key.theunwritten.character": "Открыть персонажа",
+  "key.categories.theunwritten": "The Unwritten"
+}
