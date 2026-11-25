@@ -25,7 +25,7 @@ import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.BuildCreativeModeTabContentsEvent;
-import net.neoforged.neoforge.event.server.ServerStartingEvent;
+import net.neoforged.neoforge.event.server.ServerStartingEvent;\nimport com.theunwritten.theunwrittenmod.character.CharacterAttachments;\nimport com.theunwritten.theunwrittenmod.character.CharacterEvents;\nimport com.theunwritten.theunwrittenmod.character.CharacterCommands;
 import net.neoforged.neoforge.registries.DeferredBlock;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredItem;
@@ -66,7 +66,7 @@ public class TheUnwritten {
     // The constructor for the mod class is the first code that is run when your mod is loaded.
     // FML will recognize some parameter types like IEventBus or ModContainer and pass them in automatically.
     public TheUnwritten(IEventBus modEventBus, ModContainer modContainer) {
-        // Register the commonSetup method for modloading
+        CharacterAttachments.TYPES.register(modEventBus);\n        NeoForge.EVENT_BUS.addListener(CharacterEvents::onPlayerJoin);\n        NeoForge.EVENT_BUS.addListener(CharacterCommands::register);\n\n        // Register the commonSetup method for modloading
         modEventBus.addListener(this::commonSetup);
 
         // Register the Deferred Register to the mod event bus so blocks get registered
