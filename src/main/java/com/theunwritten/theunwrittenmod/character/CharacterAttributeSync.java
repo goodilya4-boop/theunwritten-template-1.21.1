@@ -28,9 +28,13 @@ public final class CharacterAttributeSync {
         replace(player.getAttribute(Attributes.MAX_HEALTH), HEALTH_ID,
                 stats.maxHealth() / 20.0 - 1.0, AttributeModifier.Operation.ADD_MULTIPLIED_BASE);
 
-        // Test mapping: derived Speed 10 preserves vanilla movement speed; proportional scaling above/below.
+        // Test mapping: Speed is a character-scale value, not a direct vanilla multiplier.
+        // Logarithmic diminishing returns keep high Dexterity from making movement uncontrollable.
+        // At derived Speed 10 the vanilla speed is unchanged; the bonus is capped at +50%.
+        double speedRatio = Math.max(0.01, stats.speed() / 10.0);
+        double speedBonus = Math.max(-0.50, Math.min(0.50, 0.15 * Math.log(speedRatio)));
         replace(player.getAttribute(Attributes.MOVEMENT_SPEED), SPEED_ID,
-                stats.speed() / 10.0 - 1.0, AttributeModifier.Operation.ADD_MULTIPLIED_BASE);
+                speedBonus, AttributeModifier.Operation.ADD_MULTIPLIED_BASE);
 
         // Test mapping only: physical force adds 0.1 attack damage per point above/below baseline 10.
         replace(player.getAttribute(Attributes.ATTACK_DAMAGE), DAMAGE_ID,
