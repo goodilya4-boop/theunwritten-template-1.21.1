@@ -101,6 +101,8 @@ def evaluate(pilot,racial=(),endurance=(),recovery=(),sensitivity=(),pareto=(),p
     test(7,"test_cost_scales_with_actual_output","Absolute/relative cost changes with realized output")
     if "test_efficiency_bound" in tests: set_(11,"PARTIAL","Bounded efficiency unit-tested; mastery system not integrated")
     test(13,"test_reverse_order","Reversed request order reproduces result")
+    test(14,"test_splitting_continuous_action","Equivalent continuous event subdivisions preserve cost and output")
+    if "test_bl_persists_on_switch" in tests: set_(17,"PARTIAL","Global BL persists on channel switch; local persistence and long cycles still need verification")
     test(15,"test_completed_event_not_replayed","Completed event cannot replay")
     test(16,"test_priority_preemption","Conflicting channel preemption unit-tested")
     test(22,"test_rest_no_free_transition_resources","State transition does not alter resource tuple")
