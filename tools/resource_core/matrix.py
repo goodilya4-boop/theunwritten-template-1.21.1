@@ -19,5 +19,5 @@ def configurations():
                 for j in sorted(range(6),key=lambda j:(-(raw[j]-a[j]),j))[:p-sum(a)]:
                     a[j]+=1
                 s,d,c,i,w,h=[(10+x)*y for x,y in zip(a,m)]
-                char=Character(s,c,w,10*(w/10)**.7*(h/10)**.3,100*(c/10)**.9*m[6],100*(c/10)**.8*(w/10)**.2*m[7])
+                char=Character(s,c,w,10*(w/10)**.7*(h/10)**.3,100*(c/10)**.9*m[6],100*(c/10)**.8*(w/10)**.2*m[7],d)
                 yield race,level,name,char,d
