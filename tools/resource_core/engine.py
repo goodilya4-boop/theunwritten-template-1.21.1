@@ -333,7 +333,9 @@ class Engine:
                  clamp=initial_clamp+final_clamp,after=s.st,power=power,budget=budget if math.isfinite(budget) else power,
                  ft=s.ft,nfs=nfs,hp=s.hp,damage=hp_before-s.hp,work=work,distance=distance,
                  precision=precision,hold=hold,peak_force=peak_force,max_q=max([0.]+[v[2] for v in rows.values()]),
-                 strain=strain,rejected=len(active)-len(chosen),bl=max(s.bl),state=self.label(),
+                 strain=strain,requested_seconds=len(active)*dt,
+                 fulfilled_seconds=sum(dt for i in chosen.values() if i>=1-1e-8),
+                 rejected=len(active)-len(chosen),bl=max(s.bl),state=self.label(),
                  unconscious=s.unconscious,protected=s.protected,recovering=s.recovering)
         assert abs(before-paid+recovered-row["clamp"]-s.st)<1e-7
         assert 0<=s.st<=cap+1e-8 and 0<=s.ns<=1 and 0<=s.hp<=c.hpmax and s.ft>=0
