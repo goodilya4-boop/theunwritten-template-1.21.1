@@ -397,6 +397,7 @@ class Engine:
                  ft_gained=fatigue,ft_recovered=max(0.,ft_before+fatigue-s.ft),
                  theoretical_force=force,carry_work=carry_work,carry_distance=carry_distance,
                  nfs_crossings=len(crossed),crossing_width=dt if crossed else 0.,
+                 nfs_start=nfs_before,crossed_thresholds=tuple(crossed),
                  nfs_violation=int(s.hp>0 and nfs>=210*will and not s.unconscious),
                  ft=s.ft,nfs=nfs,hp=s.hp,damage=hp_before-s.hp,work=work,distance=distance,
                  precision=precision,hold=hold,peak_force=peak_force,max_q=max([0.]+[v[2] for v in rows.values()]),
