@@ -137,3 +137,15 @@ class PilotV3Tests(unittest.TestCase):
         e.step([Request("a",2,5,.01,1,.05,1000)],.05)
         e.step([],1)
         self.assertEqual(e.last["recovered"],0)
+
+    def test_completed_event_not_replayed(self):
+        e=Engine(Character())
+        r=Request("once",2,5,.01,1,.05,1000)
+        e.step([r],.05)
+        e.step([r],.05)
+        self.assertEqual(e.last["power"],0)
+
+    def test_efficiency_bound(self):
+        e=Engine(Character())
+        with self.assertRaises(ValueError):
+            e.step([Request("a",2,10,.01,1,.05,1000,efficiency=1000)])
