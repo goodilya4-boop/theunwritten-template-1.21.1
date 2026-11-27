@@ -4,7 +4,7 @@ from collections import defaultdict
 from statistics import mean
 
 KEY=("race","level","build","version","scenario","seed","duration")
-METRICS=("work","distance","precision","hold","peak_force","fulfilled_seconds","paid","damage","ft","hp_fraction","st_fraction","ko_seconds","protected_seconds","recovering_seconds")
+METRICS=("work","distance","precision","hold","peak_force","fulfilled_seconds","paid","damage","ft","hp_fraction","st_fraction","ko_seconds","protected_seconds","recovering_seconds","carry_work","carry_distance","ft_gained","ft_recovered")
 
 def load(path):
     with open(path,newline="",encoding="utf-8") as f:
@@ -35,7 +35,7 @@ def main():
     p=argparse.ArgumentParser()
     p.add_argument("baseline")
     p.add_argument("other",nargs="+")
-    p.add_argument("--output",default="sensitivity_v3.csv")
+    p.add_argument("--output",default="sensitivity_v4.csv")
     args=p.parse_args()
     base=load(args.baseline)
     with open(args.output,"w",newline="",encoding="utf-8") as f:
