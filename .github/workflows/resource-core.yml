@@ -14,17 +14,19 @@ jobs:
         with:
           python-version: '3.12'
       - run: python -m unittest discover -s tools/resource_core -v
-      - run: python tools/resource_core/run_pilot.py --seconds 5 --output pilot.csv
-      - run: python tools/resource_core/run_pilot.py --scenarios wake,critical_wake,two_phase,protected_walk,request_order,instant_repeat --seconds 30 --output targeted.csv
-      - run: python tools/resource_core/run_pilot.py --seconds 5 --dt 0.025 --output pilot_dt025.csv
-      - run: python tools/resource_core/run_pilot.py --seconds 5 --dt 0.1 --output pilot_dt100.csv
-      - run: python tools/resource_core/sensitivity.py pilot.csv pilot_dt025.csv pilot_dt100.csv
-      - run: python tools/resource_core/pareto.py pilot.csv
+      - run: python tools/resource_core/run_pilot.py --seconds 5 --output pilot_v4.csv
+      - run: python tools/resource_core/run_pilot.py --seconds 5 --dt 0.025 --output pilot_v4_dt025.csv
+      - run: python tools/resource_core/run_pilot.py --seconds 5 --dt 0.1 --output pilot_v4_dt100.csv
+      - run: python tools/resource_core/sensitivity.py pilot_v4.csv pilot_v4_dt025.csv pilot_v4_dt100.csv
+      - run: python tools/resource_core/pareto.py pilot_v4.csv
+      - run: python tools/resource_core/run_pilot.py --races all --levels 1,30,100 --builds equal,STR,CON,DEX,STR_CON,STR75_CON25 --scenarios max_single_effort,fixed_absolute,carry_distance,hold,sprint_series,coordination,attack_defense,single_burst --seconds 5 --output racial_v4.csv
+      - run: python tools/resource_core/run_pilot.py --scenarios wake,critical_wake,two_phase,protected_walk,relapse --seconds 180 --output recovery_v4.csv --events-output events_v4.csv
+      - run: python tools/resource_core/run_pilot.py --scenarios fixed_absolute,sustained,carry_distance,hold --output endurance_v4.csv
+      - run: python tools/resource_core/acceptance.py pilot_v4.csv --racial racial_v4.csv --endurance endurance_v4.csv --recovery recovery_v4.csv --sensitivity sensitivity_v4.csv --pareto pareto_v4.csv --run-tests
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
-          name: resource-core-pilot-v3
+          name: resource-core-pilot-v4
           path: |
-            pilot*.csv
-            targeted.csv
-            sensitivity_v3.csv
-            pareto_v3.csv
+            *_v4*.csv
+            acceptance_v4.*
