@@ -10,14 +10,14 @@ SUMS=("work","distance","precision","hold","damage","paid","recovered","clamp","
 PEAKS=("bl","nfs","ft","peak_force","max_q")
 FIELDS=("race","level","build","version","scenario","seed","dt","duration","hp","st","ft","ns","state","steps",
         *SUMS,*("peak_"+x if x!="peak_force" else x for x in PEAKS),
-        "hpmax","stmax","will_factor","max_crossing_width","max_active_nfs_overshoot","max_cutoff_width","cutoffs","preview_calls","initial_ft","theoretical_force","refinements","peak_intentional_excess","peak_natural_power","peak_forced_power","peak_maximum_power","scheduled_seconds","rejected_seconds","ko_seconds","protected_seconds","recovering_seconds","ko_events","wake_seconds","max_budget_excess","st_fraction","hp_fraction")
+        "hpmax","stmax","will_factor","max_crossing_width","max_active_nfs_overshoot","max_cutoff_width","cutoffs","preview_calls","initial_ft","theoretical_force","refinements","peak_intentional_excess","peak_natural_power","peak_forced_power","peak_maximum_power","peak_active_ft_delta","scheduled_seconds","rejected_seconds","ko_seconds","protected_seconds","recovering_seconds","ko_events","wake_seconds","max_budget_excess","st_fraction","hp_fraction")
 
 def simulate(c,version,seed,scenario,dt,seconds=None,reverse=False,adaptive=True,event_sink=None):
     e=Engine(c,version,seed,adaptive=adaptive)
     scenario.initialize(e)
     initial_ft=e.state.ft
     theoretical_force=10*(c.strength/10)**.9*(c.constitution/10)**.1
-    extra_peaks={k:0. for k in ('intentional_excess','natural_power','forced_power','maximum_power')}
+    extra_peaks={k:0. for k in ('intentional_excess','natural_power','forced_power','maximum_power','active_ft_delta')}
     end=scenario.duration if seconds is None else min(seconds,scenario.duration)
     events=scenario.events(end)
     j=steps=0
