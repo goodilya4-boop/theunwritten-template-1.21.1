@@ -69,11 +69,29 @@ def evaluate(pilot,racial=(),endurance=(),recovery=(),sensitivity=(),pareto=(),p
             if con and other: comparisons.append(num(con,"fulfilled_seconds")>=max(num(r,"fulfilled_seconds") for r in other)-1e-8)
         if comparisons: set_(2,"PARTIAL",f"CON matched or led full-demand time in {sum(comparisons)}/{len(comparisons)} matched long groups; inspect recovery and output")
         dex=[r for r in rows if r["scenario"] in ("sprint_series","coordination") and r["version"]=="7"]
-        if dex: set_(3,"PARTIAL",f"{len(dex)} sprint/aim rows; coordination proxy is not dodge accuracy")
+        dex_pairs=groups(dex,("race","level","seed","scenario","dt","duration"))
+        wins=checks=0
+        for g in dex_pairs.values():
+            if int(g[0]["level"])<=1: continue
+            d=next((r for r in g if r["build"]=="DEX"),None)
+            other=[r for r in g if r["build"]!="DEX"]
+            if d and other:
+                metric="distance" if d["scenario"]=="sprint_series" else "precision"
+                checks+=1
+                wins+=num(d,metric)>=max(num(r,metric) for r in other)-1e-8
+        if checks: set_(3,"PARTIAL",f"DEX matches or leads movement/coordination output in {wins}/{checks} paired groups; aim proxy is not dodge accuracy")
         if checked: set_(4,"PARTIAL",f"Hybrid realized force exceeds pure STR in {actual_conflict}/{checked} matched groups")
         if racial:
             races={r["race"] for r in racial}
-            set_(6,"PARTIAL",f"{len(racial)} racial rows, {len(races)}/6 races; no approved balance bands")
+            matched=groups([r for r in racial if r["build"]=="equal"],("level","version","scenario","seed","dt","duration"))
+            neutral=neutral_bad=0
+            for g in matched.values():
+                h=next((r for r in g if r["race"]=="human"),None)
+                v=next((r for r in g if r["race"]=="voidborn"),None)
+                if h and v:
+                    neutral+=1
+                    neutral_bad+=any(abs(num(h,k)-num(v,k))>1e-8 for k in ("hp","st","ft","work","distance","carry_work","precision","hold"))
+            set_(6,"FAIL" if neutral_bad else "PARTIAL",f"{len(racial)} racial rows, {len(races)}/6 races; human/voidborn neutral matches {neutral-neutral_bad}/{neutral}; no approved race balance bands")
         if endurance: set_(8,"PARTIAL",f"{len(endurance)} endurance rows; no approved viability targets")
         mode=[r for r in rows if r["version"] in ("6","7")]
         if mode and "test_mode_budgets" in tests:
@@ -91,7 +109,13 @@ def evaluate(pilot,racial=(),endurance=(),recovery=(),sensitivity=(),pareto=(),p
         if compared: set_(20,"PARTIAL",f"{compared} matched rest pairs; {advantages} show at least one KO advantage; long cycles still required")
     if pareto:
         eligible=[r for r in pareto if r.get("eligible")=="1"]
-        set_(5,"PARTIAL",f"{len(eligible)} eligible task/build rows; no claim of universal non-dominance from finite pilot")
+        groups_by_context=groups([r for r in pareto if r.get("output_metrics")],("race","level","version","dt"))
+        universal=0
+        for g in groups_by_context.values():
+            tasks={(r["scenario"],r["duration"]) for r in g}
+            by_build=groups(g,("build",))
+            universal+=sum({(r["scenario"],r["duration"]) for r in v if r["pareto"]=="1"}==tasks for v in by_build.values())
+        set_(5,"PARTIAL",f"{len(eligible)} eligible task/build rows; {universal} builds cover every tested task in their context; finite pilot is not universal proof")
     if sensitivity:
         # Candidate screening tolerance on group means; absolute paired error is also reported.
         finite=[r for r in sensitivity if r.get("relative_mean_delta") not in ("",None) and abs(num(r,"base_mean"))>=1]
