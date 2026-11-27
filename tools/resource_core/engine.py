@@ -56,6 +56,31 @@ def exhaustion_damage(ft, delta, harmful):
     b=max(0.,ft+delta-50)
     return .1*harmful*(b*b-a*a)/(100*delta)
 
+def nfs_stationary_times(intercept, rate, ns0, eq, decay, start, end):
+    """Stationary points of (intercept + rate*t)*(1-.65*NS(t)).
+    FT is linear on either side of the stamina exhaustion boundary.
+    """
+    if rate<=0 or decay<=0 or eq<=ns0 or end<=start: return ()
+    a=1-.65*eq
+    b=.65*(eq-ns0)
+    def derivative(t):
+        return rate*a+b*math.exp(-decay*t)*(rate-decay*(intercept+rate*t))
+    turn=2/decay-intercept/rate
+    limits=[start]+([turn] if start<turn<end else [])+[end]
+    roots=[]
+    for lo,hi in zip(limits,limits[1:]):
+        dlo,dhi=derivative(lo),derivative(hi)
+        if dlo==0 and start<lo<end: roots.append(lo)
+        if dhi==0 and start<hi<end: roots.append(hi)
+        if dlo*dhi<0:
+            for _ in range(52):
+                mid=(lo+hi)/2
+                dm=derivative(mid)
+                if (dm>=0)==(dlo>=0): lo=mid
+                else: hi=mid
+            roots.append((lo+hi)/2)
+    return tuple(sorted(set(roots)))
+
 class Engine:
     def __init__(self, character, version=7, seed=0, keep_ledger=True, adaptive=True):
         if version not in (4,5,6,7): raise ValueError("version")
@@ -341,12 +366,53 @@ class Engine:
             if s.hp>0 and pv[4]>=s.hp: return "DEAD"
             if not s.unconscious and s.hp>0 and n>=210*will: return "UNCONSCIOUS"
             return ""
-        if rows and terminal(pr,dt):
-            lo,hi=0.,dt
+        root=None
+        if rows and (terminal(pr,dt) or (s.ft+fatigue)*(1-.65*min(s.ns,ns))>=210*will):
             frozen=prepare(chosen,rows)
-            # Find the first terminal boundary in the frozen-rate preview.
-            # For positive-work profiles NFS and damage are normally monotone;
-            # verify the final bracket and fail closed on numerical failure.
+            _,_,overload_rate,activity_rate,strain_rate,_,_,eq,decay=frozen
+            walking=all(info[key][0].kind=="walk" for key in rows)
+            # Inspect internal NFS maxima, not merely the step endpoint.
+            # For active non-walk actions FT is piecewise linear at frozen rates;
+            # split at ST depletion and analytic stationary points.
+            points=[dt]
+            if not walking:
+                t_paid=min(dt,max(0.,min(s.st,available))/power) if power>0 else dt
+                r1=overload_rate+power*(activity_rate+strain_rate)
+                r2=overload_rate+.5*power/con_deficit_factor
+                if 0<t_paid<dt: points.append(t_paid)
+                points.extend(nfs_stationary_times(s.ft,r1,s.ns,eq,decay,0.,t_paid))
+                points.extend(nfs_stationary_times(s.ft+(r1-r2)*t_paid,r2,s.ns,eq,decay,t_paid,dt))
+            # Walking recovery is nonlinear. Bound each interval by unrecovered
+            # FT at its right end minus minimum recovery over the left time,
+            # and the minimum NS at either end. Search left-first if necessary.
+            def walk_bracket(lo,hi,pl,ph):
+                if s.hp<=ph[4]:
+                    possible=True
+                else:
+                    recovery_min=.1*con**.4*max(.25,math.sqrt((s.hp-ph[4])/c.hpmax))
+                    upper=max(0.,s.ft+ph[3]-recovery_min*lo)*(1-.65*min(pl[5],ph[5]))
+                    possible=upper>=210*will
+                if not possible: return None
+                if hi-lo<=1e-12:
+                    if terminal(ph,hi): return lo,hi
+                    if s.hp>ph[4] and upper<=210*will+1e-7*will: return None
+                    raise ArithmeticError("unresolved walking terminal bracket")
+                mid=(lo+hi)/2
+                pm=preview(chosen,mid,frozen)
+                return walk_bracket(lo,mid,pl,pm) or walk_bracket(mid,hi,pm,ph)
+            if walking:
+                root=walk_bracket(0.,dt,preview(chosen,0.,frozen),pr)
+            else:
+                lo=0.
+                for hi in sorted(set(points)):
+                    pv=pr if hi==dt else preview(chosen,hi,frozen)
+                    if terminal(pv,hi):
+                        root=lo,hi
+                        break
+                    lo=hi
+        if root is not None:
+            lo,hi=root
+            # Find the first terminal boundary inside its monotone bracket.
             for _ in range(80):
                 mid=(lo+hi)/2
                 if mid==lo or mid==hi: break
