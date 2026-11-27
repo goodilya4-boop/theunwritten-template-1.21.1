@@ -224,13 +224,23 @@ class Engine:
                         mode=info[key][0].mode
                         totals[mode]+=p
                         for j in range(3): zones[mode][j]+=p*info[key][6][j]
-                    # Maximum may exceed throughput but cannot grant free capacity
-                    # to natural/forced actions. Both restricted modes share one pool.
-                    return (totals["natural"]<=budget+1e-10
-                            and totals["natural"]+totals["forced"]<=1.25*budget+1e-10
-                            and all(zones["natural"][j]<=zone_limits[j]+1e-10
-                                    and zones["natural"][j]+zones["forced"][j]<=1.25*zone_limits[j]+1e-10
-                                    for j in range(3)))
+                    # Higher-priority spending consumes the shared physical pool,
+                    # including maximum-mode spending. Maximum-only groups can
+                    # exceed it; mixed same-priority groups are conservative.
+                    new_natural=totals["natural"]-mode_power["natural"]
+                    new_forced=totals["forced"]-mode_power["forced"]
+                    if new_natural>1e-12 and sum(mode_power.values())+new_natural>budget+1e-10:
+                        return False
+                    if new_natural+new_forced>1e-12:
+                        factor=1.25 if new_forced>1e-12 else 1.
+                        if sum(totals.values())>factor*budget+1e-10: return False
+                        for j in range(3):
+                            prior=sum(v[j] for v in zone_used.values())
+                            if new_natural>1e-12 and prior+zones["natural"][j]-zone_used["natural"][j]>zone_limits[j]+1e-10:
+                                return False
+                            if sum(v[j] for v in zones.values())>factor*zone_limits[j]+1e-10:
+                                return False
+                    return True
                 if fits(1.): scale=1.
                 else:
                     lo,hi=0.,1.
