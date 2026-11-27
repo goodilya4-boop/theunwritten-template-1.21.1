@@ -1,4 +1,4 @@
-"""Pilot V4 / full matrix runner with fixed physical events and streaming CSV."""
+"""Pilot V5 / full matrix runner with fixed physical events and streaming CSV."""
 import argparse,csv,time,math
 from contextlib import ExitStack
 from dataclasses import replace
@@ -6,11 +6,11 @@ from engine import Engine
 from matrix import configurations
 from scenarios import scenarios
 
-SUMS=("work","distance","precision","hold","damage","paid","recovered","clamp","strain","requested_seconds","fulfilled_seconds","ft_gained","ft_recovered","carry_work","carry_distance","nfs_crossings","nfs_violation")
+SUMS=("work","distance","precision","hold","damage","paid","recovered","clamp","strain","requested_seconds","fulfilled_seconds","ft_gained","ft_recovered","carry_work","carry_distance","nfs_crossings","nfs_violation","active_seconds")
 PEAKS=("bl","nfs","ft","peak_force","max_q")
 FIELDS=("race","level","build","version","scenario","seed","dt","duration","hp","st","ft","ns","state","steps",
         *SUMS,*("peak_"+x if x!="peak_force" else x for x in PEAKS),
-        "hpmax","stmax","will_factor","max_crossing_width","initial_ft","theoretical_force","refinements","peak_intentional_excess","peak_natural_power","peak_forced_power","peak_maximum_power","scheduled_seconds","rejected_seconds","ko_seconds","protected_seconds","recovering_seconds","ko_events","wake_seconds","max_budget_excess","st_fraction","hp_fraction")
+        "hpmax","stmax","will_factor","max_crossing_width","max_active_nfs_overshoot","max_cutoff_width","cutoffs","preview_calls","initial_ft","theoretical_force","refinements","peak_intentional_excess","peak_natural_power","peak_forced_power","peak_maximum_power","scheduled_seconds","rejected_seconds","ko_seconds","protected_seconds","recovering_seconds","ko_events","wake_seconds","max_budget_excess","st_fraction","hp_fraction")
 
 def simulate(c,version,seed,scenario,dt,seconds=None,reverse=False,adaptive=True,event_sink=None):
     e=Engine(c,version,seed,adaptive=adaptive)
@@ -26,7 +26,7 @@ def simulate(c,version,seed,scenario,dt,seconds=None,reverse=False,adaptive=True
     peaks.update(bl=max(e.state.bl),ft=e.state.ft,nfs=e.state.ft*(1-.65*e.state.ns))
     scheduled=sum(min(r.duration,end-t) for t,req in events for r in req)
     times={k:0. for k in ("UNCONSCIOUS","PROTECTED","RECOVERING")}
-    rejected=excess=cross_width=0.
+    rejected=excess=cross_width=overshoot=cut_width=0.
     previous=e.label()
     kos=0
     wake=None
@@ -64,6 +64,8 @@ def simulate(c,version,seed,scenario,dt,seconds=None,reverse=False,adaptive=True
             rejected+=row["rejected"]*row["dt"]
             excess=max(excess,row["budget_excess"])
             cross_width=max(cross_width,row["crossing_width"])
+            overshoot=max(overshoot,row["active_nfs_overshoot"])
+            cut_width=max(cut_width,row["cutoff_width"])
             for k in extra_peaks: extra_peaks[k]=max(extra_peaks[k],row[k])
         e.ledger.clear()
     s=e.state
@@ -71,13 +73,14 @@ def simulate(c,version,seed,scenario,dt,seconds=None,reverse=False,adaptive=True
                 **sums,**{("peak_"+k if k!="peak_force" else k):v for k,v in peaks.items()},
                 hpmax=c.hpmax,stmax=c.stmax,will_factor=(c.will/10)**.4,max_crossing_width=cross_width,
                 initial_ft=initial_ft,theoretical_force=theoretical_force,refinements=e.refinements,
+                max_active_nfs_overshoot=overshoot,max_cutoff_width=cut_width,cutoffs=e.cutoffs,preview_calls=e.preview_calls,
                 **{"peak_"+k:v for k,v in extra_peaks.items()},scheduled_seconds=scheduled,rejected_seconds=rejected,ko_seconds=times["UNCONSCIOUS"],protected_seconds=times["PROTECTED"],
                 recovering_seconds=times["RECOVERING"],ko_events=kos,wake_seconds="" if wake is None else wake,
                 max_budget_excess=excess,st_fraction=s.st/c.stmax,hp_fraction=s.hp/c.hpmax)
 
 def main():
     p=argparse.ArgumentParser()
-    p.add_argument("--output",default="pilot_v4.csv")
+    p.add_argument("--output",default="pilot_v5.csv")
     p.add_argument("--seconds",type=float,help="truncate each scenario; omit for full duration")
     p.add_argument("--dt",type=float,default=.05)
     p.add_argument("--full",action="store_true",help="all 420 configs, default 10 repetitions")
