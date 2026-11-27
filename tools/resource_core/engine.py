@@ -1,5 +1,5 @@
 """Experimental dynamic V4–V7 kernel. Standard library only."""
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 import math
 import random
 from allocator import Request, allocate
@@ -14,6 +14,7 @@ class State:
     unconscious: bool = False
     protected: bool = False
     elapsed: float = 0
+    recovering: bool = False
 
 @dataclass(frozen=True)
 class Character:
@@ -49,25 +50,42 @@ class Engine:
         if s.ft*(1-.65*s.ns)>=210*will:
             s.unconscious = True
             s.protected = False
+            s.recovering = False
         if s.unconscious or s.hp<=0:
             self.reservations.clear()
             requests = ()
+        requests = tuple(requests)
+        if len({r.id for r in requests}) != len(requests):
+            raise ValueError('duplicate action id')
         active = {r.id:r for r in requests}
         for key,(r,end) in list(self.reservations.items()):
             if end > self.time+1e-9:
                 active[key] = r
             else:
                 del self.reservations[key]
+        # Candidate dual cost: absolute demand and relative effort.
+        original = dict(active)
+        capacity = max(1e-9, 10*(c.strength/10)**.9*(c.constitution/10)**.1*k)
+        if self.version >= 5:
+            active = {key:replace(r,power=10*(r.omega*r.power/10+(1-r.omega)*(r.power/capacity)**2)) for key,r in active.items()}
         budget = sustainable if s.protected else burst
+        if s.recovering:
+            budget *= .5+.5*min(1.,s.elapsed/10)
+        if s.protected:
+            budget *= .25
+        if s.hp<=0:
+            budget=0
         if self.version<6:
             budget = sum(r.power for r in active.values())
         if self.version==7:
             result = allocate(active.values(),budget)
         else:
-            result = {r.id: (min(1.,budget/max(r.power,1e-12)),min(r.power,budget),r.duration) for r in active.values()}
+            total=sum(r.power for r in active.values())
+            scale=min(1.,budget/max(total,1e-12))
+            result = {r.id: (scale,r.power*scale,r.duration) for r in active.values() if scale>0 and scale>=r.minimum}
         for key in result:
             if key not in self.reservations:
-                r=active[key]
+                r=original[key]
                 self.reservations[key]=(r,self.time+r.duration)
         power = sum(v[1] for v in result.values())
         demand = power*dt
@@ -76,6 +94,9 @@ class Engine:
         deficit = demand-paid
         strain = .05*paid*max(0.,power/max(sustainable,1e-12)-1)**2 if self.version>=6 else 0.
         fatigue = .5*deficit/(c.constitution/10)**.2+.03*paid+strain
+        harmful=.5*deficit/(c.constitution/10)**.2
+        damage=.1*harmful*max(0.,(s.ft+fatigue/2-50)/50)
+        s.hp=max(0.,s.hp-damage)
         s.ft += fatigue
         for key,(intensity,_,_) in result.items():
             load=intensity**1.5*dt
@@ -107,6 +128,7 @@ class Engine:
         if not s.unconscious and (nfs>=210*will or self.rng.random()<1-(1-p)**dt):
             s.unconscious=True
             s.protected=False
+            s.recovering=False
             s.elapsed=0
         if s.unconscious:
             s.elapsed+=dt
@@ -116,11 +138,17 @@ class Engine:
                 s.elapsed=0
         elif s.protected and s.ft<=80*will*(.5+.5*math.sqrt(h)) and s.st>=.1*cap:
             s.protected=False
+            s.recovering=True
+            s.elapsed=0
+        elif s.recovering:
+            s.elapsed+=dt
+            if s.elapsed>=10:
+                s.recovering=False
         self.time+=dt
-        row=dict(time=self.time,before=before,paid=paid,recovered=recovered,clamp=clamp,after=s.st,power=power,budget=budget,ft=s.ft,nfs=nfs)
+        row=dict(time=self.time,before=before,paid=paid,recovered=recovered,clamp=clamp,after=s.st,power=power,budget=budget,ft=s.ft,nfs=nfs,hp=s.hp,damage=damage,work=sum(original[key].power*v[0]*dt for key,v in result.items()),rejected=len(active)-len(result),bl=max(s.bl),unconscious=s.unconscious,protected=s.protected,recovering=s.recovering)
         assert abs(before-paid+recovered-clamp-s.st)<1e-8
         assert 0<=s.st<=cap+1e-8
-        if self.version==7:
+        if self.version>=6:
             assert power<=budget+1e-8
         self.ledger.append(row)
         return result
