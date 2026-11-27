@@ -5,7 +5,7 @@ from allocator import Request
 class RegressionTests(unittest.TestCase):
     def test_version_cost(self):
         a,b=Engine(Character(),4),Engine(Character(),5)
-        r=Request("a",2,40,.1,1,.05,1000)
+        r=Request("a",2,5,.1,1,.05,1000)
         a.step([r])
         b.step([r])
         self.assertNotEqual(a.ledger[-1]["paid"],b.ledger[-1]["paid"])
@@ -21,7 +21,7 @@ class RegressionTests(unittest.TestCase):
         e=Engine(Character(),4)
         e.state.ft=100
         e.state.st=0
-        e.step([Request("a",2,100,.1,1,.05,1000)])
+        e.step([Request("a",2,100,.001,1,.05,1000)])
         self.assertLess(e.state.hp,100)
 
     def test_duplicate(self):
