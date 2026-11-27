@@ -1,4 +1,4 @@
-"""Pilot V3 candidate physiology; game units, not real-world physiology."""
+"""Pilot V4 candidate physiology; game units, not real-world physiology."""
 from dataclasses import dataclass, field
 import math
 import random
@@ -57,7 +57,7 @@ def exhaustion_damage(ft, delta, harmful):
     return .1*harmful*(b*b-a*a)/(100*delta)
 
 class Engine:
-    def __init__(self, character, version=7, seed=0, keep_ledger=True):
+    def __init__(self, character, version=7, seed=0, keep_ledger=True, adaptive=True):
         if version not in (4,5,6,7): raise ValueError("version")
         if not all(math.isfinite(x) and x>0 for x in vars(character).values()):
             raise ValueError("character")
@@ -74,6 +74,9 @@ class Engine:
         self.time=0.
         self.last_spend=-math.inf
         self.recovery_duration=10.
+        self.adaptive=adaptive
+        self.min_slice=.001
+        self.refinements=0
 
     def label(self):
         s=self.state
@@ -129,6 +132,7 @@ class Engine:
     def _slice(self,requests,dt):
         c,s=self.c,self.state
         before=s.st
+        ft_before=s.ft
         hp_before=s.hp
         will=(c.will/10)**.4
         nfs=s.ft*(1-.65*s.ns)
@@ -160,7 +164,7 @@ class Engine:
         extra=20*strength**.65*con**.15*k
         burst=sustainable+extra*math.exp(-s.bl[0]/5)
         budget=sustainable if s.protected else burst
-        if self.version<6 and not s.protected: budget=math.inf
+        limited=self.version>=6 or s.protected
         protect=min(clamp(h/.25),1/(1+max(0,s.ft-50)/100),clamp((1.5-s.ft/(120*will))/.7))
         info={}
         for key,r in active.items():
@@ -179,7 +183,8 @@ class Engine:
             if s.protected:
                 top=min(top,.25*math.sqrt(clamp(h/.25))*clamp((210*will-s.ft)/(90*will)))
                 if r.kind=="walk": top=min(top,.1)
-            local_budget=min(r.local_limit,sustainable+extra*math.exp(-local/5)) if self.version>=6 else math.inf
+            factor=1.25 if r.mode=="forced" else 1.
+            local_budget=min(r.local_limit,factor*(sustainable+extra*math.exp(-local/5))) if limited and r.mode!="maximum" else r.local_limit
             info[key]=(r,cap,tolerance,top,local_budget,bl_rate,weights)
 
         def evaluate(key,i):
@@ -192,8 +197,9 @@ class Engine:
 
         chosen={}
         occupied=0
-        remaining=budget
-        zone_remaining=[sustainable+extra*math.exp(-(s.bl[0]+b)/5) if self.version>=6 else math.inf for b in s.bl[1:]]
+        mode_power={"natural":0.,"forced":0.,"maximum":0.}
+        zone_used={mode:[0.,0.,0.] for mode in mode_power}
+        zone_limits=[sustainable if s.protected else sustainable+extra*math.exp(-(s.bl[0]+b)/5) for b in s.bl[1:]]
         # V4-V6 share one proportional group; V7 allocates by priority.
         groups=range(5) if self.version==7 else (None,)
         for priority in groups:
@@ -209,8 +215,21 @@ class Engine:
                 if not compatible: break
                 def fits(scale):
                     costs=[evaluate(key,info[key][3]*scale)[1] for key in compatible]
-                    return (sum(costs)<=remaining and all(p<=info[key][4] for key,p in zip(compatible,costs))
-                            and all(sum(p*info[key][6][j] for key,p in zip(compatible,costs))<=zone_remaining[j] for j in range(3)))
+                    if not all(p<=info[key][4] for key,p in zip(compatible,costs)): return False
+                    if not limited: return True
+                    totals=dict(mode_power)
+                    zones={m:list(v) for m,v in zone_used.items()}
+                    for key,p in zip(compatible,costs):
+                        mode=info[key][0].mode
+                        totals[mode]+=p
+                        for j in range(3): zones[mode][j]+=p*info[key][6][j]
+                    # Maximum may exceed throughput but cannot grant free capacity
+                    # to natural/forced actions. Both restricted modes share one pool.
+                    return (totals["natural"]<=budget+1e-10
+                            and totals["natural"]+totals["forced"]<=1.25*budget+1e-10
+                            and all(zones["natural"][j]<=zone_limits[j]+1e-10
+                                    and zones["natural"][j]+zones["forced"][j]<=1.25*zone_limits[j]+1e-10
+                                    for j in range(3)))
                 if fits(1.): scale=1.
                 else:
                     lo,hi=0.,1.
@@ -227,8 +246,9 @@ class Engine:
                     intensity=info[key][3]*scale
                     chosen[key]=intensity
                     allocated=evaluate(key,intensity)[1]
-                    remaining-=allocated
-                    for j in range(3): zone_remaining[j]-=allocated*info[key][6][j]
+                    mode=info[key][0].mode
+                    mode_power[mode]+=allocated
+                    for j in range(3): zone_used[mode][j]+=allocated*info[key][6][j]
                     occupied|=info[key][0].channels
                 break
 
@@ -271,6 +291,21 @@ class Engine:
             pr=preview(chosen)
             if not safe(chosen,pr): chosen={}; pr=preview(chosen)
         rows,power,paid,fatigue,damage,ns,a,strain=pr
+        # Refine BEFORE committing any resource/action effects. The outer step
+        # integrates the remaining interval, preserving event start/end times.
+        # Threshold crossing is bounded to min_slice, not claimed exact.
+        projected=(s.ft+fatigue)*(1-.65*ns)
+        x=clamp((projected-120*will)/(90*will))
+        p=x*x*(a*a if s.protected else 1.)
+        hazard_loss=-math.log1p(-p)*dt if p<1 else math.inf
+        crossing=(any(min(nfs,projected)<t*will<=max(nfs,projected) for t in (120,180,210))
+                  or (not s.unconscious and hazard_loss>=self.hazard)
+                  or (s.hp>0 and damage>=s.hp))
+        critical=(fatigue>2.5 or damage>max(.1,.005*c.hpmax) or (rows and projected>=110*will))
+        if self.adaptive and dt>2*self.min_slice and (crossing or (critical and dt>.005)):
+            self.refinements+=1
+            return self._slice(requests,dt/2)
+        mode_power={m:sum(rows[k][1] for k in rows if info[k][0].mode==m) for m in mode_power}
         self.reservations={key:self.reservations.get(key,(active[key],self.time+active[key].duration))
                            for key in chosen}
         initial_clamp=max(0.,s.st-available)
@@ -280,7 +315,7 @@ class Engine:
         s.ns=ns
         if paid>0: self.last_spend=self.time+dt
         used=[False]*3
-        work=distance=precision=hold=peak_force=0.
+        work=distance=precision=hold=peak_force=carry_work=carry_distance=0.
         for key,i in chosen.items():
             r,_,_,_,_,bl_rate,weights=info[key]
             output,_,q,_=rows[key]
@@ -290,6 +325,10 @@ class Engine:
                 s.bl[j+1]+=.6*w*load
             for j,mask in enumerate((3,4,24)): used[j]|=bool(r.channels&mask)
             if r.kind in MOVEMENT: distance+=output*dt
+            elif r.kind=="carry":
+                travelled=functional_speed*i*dt
+                carry_distance+=travelled
+                carry_work+=output*travelled
             elif r.kind=="aim": precision+=output*dt
             elif r.kind in ("hold","block"): hold+=output*dt
             else:
@@ -332,8 +371,16 @@ class Engine:
             self.transition("CONSCIOUS")
         elif s.recovering and s.ft>=120*will: self.transition("PROTECTED")
         self.time=round(self.time+dt,12)
+        restricted=mode_power["natural"]+mode_power["forced"]
+        allowed=1.25*budget if mode_power["forced"]>0 else budget
+        budget_excess=max(0.,mode_power["natural"]-budget,restricted-allowed) if limited else 0.
         row=dict(time=self.time,dt=dt,before=before,paid=paid,recovered=recovered,
-                 clamp=initial_clamp+final_clamp,after=s.st,power=power,budget=budget if math.isfinite(budget) else power,
+                 clamp=initial_clamp+final_clamp,after=s.st,power=power,budget=allowed if limited else power,
+                 budget_excess=budget_excess,burst=burst,sustainable=sustainable,
+                 natural_power=mode_power["natural"],forced_power=mode_power["forced"],maximum_power=mode_power["maximum"],
+                 intentional_excess=max(0.,power-allowed) if limited else 0.,
+                 ft_gained=fatigue,ft_recovered=max(0.,ft_before+fatigue-s.ft),
+                 theoretical_force=force,carry_work=carry_work,carry_distance=carry_distance,
                  ft=s.ft,nfs=nfs,hp=s.hp,damage=hp_before-s.hp,work=work,distance=distance,
                  precision=precision,hold=hold,peak_force=peak_force,max_q=max([0.]+[v[2] for v in rows.values()]),
                  strain=strain,requested_seconds=len(active)*dt,
@@ -342,7 +389,8 @@ class Engine:
                  unconscious=s.unconscious,protected=s.protected,recovering=s.recovering)
         assert abs(before-paid+recovered-row["clamp"]-s.st)<1e-7
         assert 0<=s.st<=cap+1e-8 and 0<=s.ns<=1 and 0<=s.hp<=c.hpmax and s.ft>=0
-        assert power<=budget+1e-8
+        assert budget_excess<=1e-8
+        assert abs(ft_before+fatigue-row["ft_recovered"]-s.ft)<1e-7
         self.last=row
         if self.keep_ledger: self.ledger.append(row)
         return {key:(i,rows[key][1],active[key].duration) for key,i in chosen.items()}
