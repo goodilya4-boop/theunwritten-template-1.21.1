@@ -136,6 +136,7 @@ class Engine:
         hp_before=s.hp
         will=(c.will/10)**.4
         nfs=s.ft*(1-.65*s.ns)
+        nfs_before=nfs
         if s.hp>0 and nfs>=210*will: self.transition("UNCONSCIOUS")
         elif self.label()=="CONSCIOUS" and s.ft>=210*will: self.transition("PROTECTED")
         start_state=self.label()
@@ -294,7 +295,10 @@ class Engine:
         # Refine BEFORE committing any resource/action effects. The outer step
         # integrates the remaining interval, preserving event start/end times.
         # Threshold crossing is bounded to min_slice, not claimed exact.
-        projected=(s.ft+fatigue)*(1-.65*ns)
+        projected_ft=s.ft+fatigue
+        if s.hp>damage and (not rows or all(info[key][0].kind=="walk" for key in rows)):
+            projected_ft=max(0.,projected_ft-.5*con**.4*max(.25,math.sqrt((s.hp-damage)/c.hpmax))*dt*(1. if not rows else .2))
+        projected=projected_ft*(1-.65*ns)
         x=clamp((projected-120*will)/(90*will))
         p=x*x*(a*a if s.protected else 1.)
         hazard_loss=-math.log1p(-p)*dt if p<1 else math.inf
@@ -371,6 +375,7 @@ class Engine:
             self.transition("CONSCIOUS")
         elif s.recovering and s.ft>=120*will: self.transition("PROTECTED")
         self.time=round(self.time+dt,12)
+        crossed=[t for t in (120,180,210) if min(nfs_before,nfs)<t*will<=max(nfs_before,nfs)]
         restricted=mode_power["natural"]+mode_power["forced"]
         allowed=1.25*budget if mode_power["forced"]>0 else budget
         budget_excess=max(0.,mode_power["natural"]-budget,restricted-allowed) if limited else 0.
@@ -381,6 +386,8 @@ class Engine:
                  intentional_excess=max(0.,power-allowed) if limited else 0.,
                  ft_gained=fatigue,ft_recovered=max(0.,ft_before+fatigue-s.ft),
                  theoretical_force=force,carry_work=carry_work,carry_distance=carry_distance,
+                 nfs_crossings=len(crossed),crossing_width=dt if crossed else 0.,
+                 nfs_violation=int(s.hp>0 and nfs>=210*will and not s.unconscious),
                  ft=s.ft,nfs=nfs,hp=s.hp,damage=hp_before-s.hp,work=work,distance=distance,
                  precision=precision,hold=hold,peak_force=peak_force,max_q=max([0.]+[v[2] for v in rows.values()]),
                  strain=strain,requested_seconds=len(active)*dt,
