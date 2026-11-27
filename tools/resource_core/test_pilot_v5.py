@@ -25,6 +25,7 @@ class PilotV5Tests(unittest.TestCase):
                 self.assertLessEqual(row["max_active_nfs_overshoot"],1e-6*row["will_factor"])
                 self.assertLessEqual(row["peak_nfs"],210*row["will_factor"]+1e-5)
                 self.assertLess(row["ft_gained"],220)
+                self.assertLessEqual(row["peak_active_ft_delta"],2.500001)
                 self.assertEqual(row["nfs_violation"],0)
 
     def test_terminal_submillisecond(self):
@@ -52,7 +53,7 @@ class PilotV5Tests(unittest.TestCase):
         case=S("extreme",.1,Action("strike",100,.1,.025,1,mode="maximum"))
         c=Character(strength=307)
         a=simulate(c,7,0,case,.1,adaptive=False)
-        b=simulate(c,7,0,case,.025,adaptive=False)
+        b=simulate(c,7,0,case,.001,adaptive=False)
         self.assertLessEqual(a["max_active_nfs_overshoot"],1e-6)
         self.assertAlmostEqual(a["work"],b["work"],places=7)
 
@@ -117,3 +118,20 @@ class PilotV5Tests(unittest.TestCase):
                 row=next(csv.DictReader(f))
             self.assertEqual(float(row["p50"]),10)
             self.assertAlmostEqual(float(row["p95"]),19)
+
+    def test_large_initial_ft_not_clipped(self):
+        e=Engine(Character(),7)
+        e.state.ft=600
+        e.state.st=0
+        e.transition("UNCONSCIOUS")
+        e.step([], .05)
+        self.assertGreater(e.state.ft,599)
+        self.assertEqual(e.label(),"UNCONSCIOUS")
+
+    def test_distinct_discrete_splits_not_cheaper(self):
+        whole=S("whole",.25,Action("strike",5,1,.25,1))
+        split=S("split",.25,Action("strike",5,.125,.125,1))
+        a=simulate(Character(),5,0,whole,.025,adaptive=False)
+        b=simulate(Character(),5,0,split,.025,adaptive=False)
+        self.assertAlmostEqual(a["work"],b["work"],places=7)
+        self.assertGreaterEqual(b["paid"],a["paid"])
