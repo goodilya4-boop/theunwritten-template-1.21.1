@@ -1,7 +1,7 @@
 """Resumable deterministic campaign; SQLite is the durable source of truth.
 Windows spawn safe. Each completed simulation is committed by the parent only.
 """
-import argparse,csv,hashlib,json,math,os,sqlite3,time
+import argparse,csv,hashlib,json,math,os,sqlite3,time,platform
 from concurrent.futures import ProcessPoolExecutor,wait,FIRST_COMPLETED
 from dataclasses import replace
 from pathlib import Path
@@ -40,9 +40,9 @@ def connect(path,manifest):
     value=json.dumps(manifest,sort_keys=True,separators=(",",":"))
     with db:
         db.execute("INSERT OR IGNORE INTO meta VALUES (1,?)",(value,))
-        if db.execute("SELECT manifest FROM meta WHERE id=1").fetchone()[0]!=value:
-            db.close()
-            raise ValueError("checkpoint manifest mismatch; choose a new database")
+    if db.execute("SELECT manifest FROM meta WHERE id=1").fetchone()[0]!=value:
+        db.close()
+        raise ValueError("checkpoint manifest mismatch; choose a new database")
     return db
 
 def unfinished(db,jobs):
@@ -127,7 +127,7 @@ def main():
         if {s.name for s in cases}!=names: p.error("unknown scenarios")
     if not configs or not cases: p.error("empty selection")
     total=len(configs)*len(cases)*4*repeats
-    manifest=dict(code=fingerprint(),configs=[x[:3] for x in configs],scenarios=[s.name for s in cases],repeats=repeats,dt=args.dt,seconds=args.seconds,total=total)
+    manifest=dict(code=fingerprint(),python=platform.python_version(),configs=[x[:3] for x in configs],scenarios=[s.name for s in cases],repeats=repeats,dt=args.dt,seconds=args.seconds,total=total)
     db=connect(args.db,manifest)
     start=time.perf_counter()
     try:
