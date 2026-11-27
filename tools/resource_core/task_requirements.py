@@ -1,5 +1,5 @@
 """Candidate absolute game-unit task floors, independent of competing builds.
-Rates apply to planned action time (not time actually completed).
+Rates apply to the scenario observation duration, not completed action time.
 Only explicitly specified tasks are ranked in absolute mode.
 """
 import json
