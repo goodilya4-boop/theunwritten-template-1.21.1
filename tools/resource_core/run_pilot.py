@@ -9,7 +9,7 @@ SUMS=("work","distance","precision","hold","damage","paid","recovered","clamp","
 PEAKS=("bl","nfs","ft","peak_force","max_q")
 FIELDS=("race","level","build","version","scenario","seed","dt","duration","hp","st","ft","ns","state","steps",
         *SUMS,*("peak_"+x if x!="peak_force" else x for x in PEAKS),
-        "rejected_seconds","ko_seconds","protected_seconds","recovering_seconds","ko_events","wake_seconds","max_budget_excess","st_fraction","hp_fraction")
+        "scheduled_seconds","rejected_seconds","ko_seconds","protected_seconds","recovering_seconds","ko_events","wake_seconds","max_budget_excess","st_fraction","hp_fraction")
 
 def simulate(c,version,seed,scenario,dt,seconds=None,reverse=False):
     e=Engine(c,version,seed)
@@ -19,6 +19,8 @@ def simulate(c,version,seed,scenario,dt,seconds=None,reverse=False):
     j=steps=0
     sums={k:0. for k in SUMS}
     peaks={k:0. for k in PEAKS}
+    peaks.update(bl=max(e.state.bl),ft=e.state.ft,nfs=e.state.ft*(1-.65*e.state.ns))
+    scheduled=sum(min(r.duration,end-t) for t,req in events for r in req)
     times={k:0. for k in ("UNCONSCIOUS","PROTECTED","RECOVERING")}
     rejected=excess=0.
     previous=e.label()
@@ -39,10 +41,10 @@ def simulate(c,version,seed,scenario,dt,seconds=None,reverse=False):
             for k in SUMS: sums[k]+=row[k]
             for k in PEAKS: peaks[k]=max(peaks[k],row[k])
             state=row["state"]
-            if state in times: times[state]+=row["dt"]
+            if row["start_state"] in times: times[row["start_state"]]+=row["dt"]
             if state=="UNCONSCIOUS" and previous!="UNCONSCIOUS":
                 kos+=1
-                ko_start=row["time"]
+                ko_start=row["time"]-row["dt"] if row["start_state"]=="UNCONSCIOUS" else row["time"]
             if previous=="UNCONSCIOUS" and state=="PROTECTED" and wake is None:
                 wake=row["time"]-ko_start
             previous=state
@@ -52,7 +54,7 @@ def simulate(c,version,seed,scenario,dt,seconds=None,reverse=False):
     s=e.state
     return dict(dt=dt,duration=end,hp=s.hp,st=s.st,ft=s.ft,ns=s.ns,state=e.label(),steps=steps,
                 **sums,**{("peak_"+k if k!="peak_force" else k):v for k,v in peaks.items()},
-                rejected_seconds=rejected,ko_seconds=times["UNCONSCIOUS"],protected_seconds=times["PROTECTED"],
+                scheduled_seconds=scheduled,rejected_seconds=rejected,ko_seconds=times["UNCONSCIOUS"],protected_seconds=times["PROTECTED"],
                 recovering_seconds=times["RECOVERING"],ko_events=kos,wake_seconds="" if wake is None else wake,
                 max_budget_excess=excess,st_fraction=s.st/c.stmax,hp_fraction=s.hp/c.hpmax)
 
