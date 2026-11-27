@@ -23,7 +23,7 @@ def main():
     count=steps=0
     with open(args.output,"w",newline="",encoding="utf-8") as f:
         out=csv.writer(f)
-        out.writerow(["race","level","build","version","scenario","seed","hp","st","ft","ns","steps"])
+        out.writerow(["race","level","build","version","scenario","seed","hp","st","ft","ns","steps","work","damage","rejected","peak_bl","peak_nfs","ko_steps","protected_steps","recovering_steps","max_budget_excess"])
         for race,level,build,c,dex in configs:
             for version in (4,5,6,7):
                 for sid,(power,pattern,duty) in enumerate(scenarios()):
@@ -34,7 +34,7 @@ def main():
                             req=[Request(str(j),j+1,power,.1,ch,args.dt,1000) for j,ch in enumerate(pattern)] if tick%duty==0 else []
                             e.step(req,args.dt)
                         s=e.state
-                        out.writerow([race,level,build,version,sid,seed,s.hp,s.st,s.ft,s.ns,n])
+                        out.writerow([race,level,build,version,sid,seed,s.hp,s.st,s.ft,s.ns,n,sum(x["work"] for x in e.ledger),sum(x["damage"] for x in e.ledger),sum(x["rejected"] for x in e.ledger),max((x["bl"] for x in e.ledger),default=0),max((x["nfs"] for x in e.ledger),default=0),sum(x["unconscious"] for x in e.ledger),sum(x["protected"] for x in e.ledger),sum(x["recovering"] for x in e.ledger),max((max(0,x["power"]-x["budget"]) for x in e.ledger),default=0)])
                         count+=1
                         steps+=n
     elapsed=time.perf_counter()-start
