@@ -167,7 +167,8 @@ class Engine:
             lam=ls+(lb-ls)*math.exp(-local/5)
             tolerance=durability*max(1.,force/durability)**lam*r.support
             cap=functional_speed if r.kind in MOVEMENT else functional_coord if r.kind=="aim" else functional_force
-            demand=min(r.power,cap)
+            if r.kind in MOVEMENT: tolerance*=speed/force
+            elif r.kind=='aim': tolerance*=coordination/force
             reg=protect if r.mode=="natural" else .5+.5*protect if r.mode=="forced" else 1.
             top=min(1.,cap/max(r.power,1e-12))*reg
             if r.mode!="maximum":
@@ -189,6 +190,7 @@ class Engine:
         chosen={}
         occupied=0
         remaining=budget
+        zone_remaining=[sustainable+extra*math.exp(-(s.bl[0]+b)/5) if self.version>=6 else math.inf for b in s.bl[1:]]
         # V4-V6 share one proportional group; V7 allocates by priority.
         groups=range(5) if self.version==7 else (None,)
         for priority in groups:
@@ -204,7 +206,8 @@ class Engine:
                 if not compatible: break
                 def fits(scale):
                     costs=[evaluate(key,info[key][3]*scale)[1] for key in compatible]
-                    return sum(costs)<=remaining and all(p<=info[key][4] for key,p in zip(compatible,costs))
+                    return (sum(costs)<=remaining and all(p<=info[key][4] for key,p in zip(compatible,costs))
+                            and all(sum(p*info[key][6][j] for key,p in zip(compatible,costs))<=zone_remaining[j] for j in range(3)))
                 if fits(1.): scale=1.
                 else:
                     lo,hi=0.,1.
@@ -220,7 +223,9 @@ class Engine:
                 for key in compatible:
                     intensity=info[key][3]*scale
                     chosen[key]=intensity
-                    remaining-=evaluate(key,intensity)[1]
+                    allocated=evaluate(key,intensity)[1]
+                    remaining-=allocated
+                    for j in range(3): zone_remaining[j]-=allocated*info[key][6][j]
                     occupied|=info[key][0].channels
                 break
 
