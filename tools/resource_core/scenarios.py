@@ -1,5 +1,6 @@
 """Named, physical-time scenarios. Durations are seconds, not ticks."""
 from dataclasses import dataclass
+from functools import lru_cache
 from allocator import Request
 
 @dataclass(frozen=True)
@@ -52,6 +53,7 @@ class Scenario:
         s.bl=list(self.bl)
         e.transition(self.state)
 
+    @lru_cache(maxsize=32)
     def events(self,limit=None):
         """Stable action starts and end times independent of integrator dt."""
         offset=0.
@@ -67,7 +69,7 @@ class Scenario:
                     n+=1
             offset+=length
             if offset>=end-1e-9: break
-        return sorted((t,tuple(req)) for t,req in events.items())
+        return tuple(sorted((t,tuple(req)) for t,req in events.items()))
 
 def P(seconds,*actions): return seconds,actions
 def S(name,seconds,*actions,**kw): return Scenario(name,(P(seconds,*actions),),**kw)
