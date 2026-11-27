@@ -266,25 +266,32 @@ class Engine:
                     occupied|=info[key][0].channels
                 break
 
-        def preview(intensities, interval=None, prepared=None):
-            self.preview_calls+=1
-            dt_local=dt if interval is None else interval
-            rows=prepared if prepared is not None else {key:evaluate(key,i) for key,i in intensities.items()}
+        def prepare(intensities, rows=None):
+            rows={key:evaluate(key,i) for key,i in intensities.items()} if rows is None else rows
             power=sum(row[1] for row in rows.values())
-            demand=power*dt_local
-            paid=min(max(0.,min(s.st,available)),demand)
-            deficit=demand-paid
-            overload=sum(.5*row[3]*max(0.,row[2]-1)**2*dt_local for row in rows.values())
-            activity=sum(.03*paid*row[1]/max(power,1e-12)*row[2] for row in rows.values())
-            strain=.05*paid*max(0.,power/max(sustainable,1e-12)-1)**2 if self.version>=6 else 0.
-            harmful=.5*deficit/(con**.2)+overload
-            fatigue=harmful+activity+strain
-            damage=exhaustion_damage(s.ft,fatigue,harmful)+sum(.2*row[3]*max(0.,row[2]-1.5)**2*dt_local for row in rows.values())
+            overload_rate=sum(.5*row[3]*max(0.,row[2]-1)**2 for row in rows.values())
+            activity_per_paid=sum(.03*row[1]/max(power,1e-12)*row[2] for row in rows.values())
+            strain_per_paid=.05*max(0.,power/max(sustainable,1e-12)-1)**2 if self.version>=6 else 0.
+            mechanical_rate=sum(.2*row[3]*max(0.,row[2]-1.5)**2 for row in rows.values())
             a=clamp(max([power/max(burst,1e-12)]+[.05 if info[key][0].kind=="walk" else i for key,i in intensities.items()]))
             ks=.2*health*(1. if not rows else .5 if a<=.05 else .25 if a<=.1 else 0.)
             kd=.8*a*a+.4*max([0.]+[row[2]-1 for row in rows.values()])
             eq=ks/(ks+kd) if ks+kd else s.ns
-            ns=clamp(eq+(s.ns-eq)*math.exp(-(ks+kd)*dt_local))
+            return rows,power,overload_rate,activity_per_paid,strain_per_paid,mechanical_rate,a,eq,ks+kd
+
+        def preview(intensities, interval=None, prepared=None):
+            self.preview_calls+=1
+            dt_local=dt if interval is None else interval
+            rows,power,overload_rate,activity_per_paid,strain_per_paid,mechanical_rate,a,eq,neural_rate=(
+                prepare(intensities) if prepared is None else prepared)
+            demand=power*dt_local
+            paid=min(max(0.,min(s.st,available)),demand)
+            deficit=demand-paid
+            harmful=.5*deficit/(con**.2)+overload_rate*dt_local
+            strain=paid*strain_per_paid
+            fatigue=harmful+paid*activity_per_paid+strain
+            damage=exhaustion_damage(s.ft,fatigue,harmful)+mechanical_rate*dt_local
+            ns=clamp(eq+(s.ns-eq)*math.exp(-neural_rate*dt_local))
             return rows,power,paid,fatigue,damage,ns,a,strain
 
         def safe(values,pr):
@@ -325,20 +332,21 @@ class Engine:
             return ""
         if rows and terminal(pr,dt):
             lo,hi=0.,dt
+            frozen=prepare(chosen,rows)
             # Find the first terminal boundary in the frozen-rate preview.
             # For positive-work profiles NFS and damage are normally monotone;
             # verify the final bracket and fail closed on numerical failure.
             for _ in range(80):
                 mid=(lo+hi)/2
                 if mid==lo or mid==hi: break
-                trial=preview(chosen,mid,rows)
+                trial=preview(chosen,mid,frozen)
                 if terminal(trial,mid): hi=mid
                 else: lo=mid
-                if hi-lo<=1e-12 and max(0.,projected_at(preview(chosen,hi,rows),hi)-210*will)<=1e-7*will: break
+                if hi-lo<=1e-12 and max(0.,projected_at(preview(chosen,hi,frozen),hi)-210*will)<=1e-7*will: break
             if hi<=0 or self.time+hi==self.time:
                 raise ArithmeticError("terminal event below representable clock resolution")
             dt=hi
-            pr=preview(chosen,dt,rows)
+            pr=preview(chosen,dt,frozen)
             cutoff=terminal(pr,dt)
             if not cutoff: raise ArithmeticError("terminal event bracket lost")
             if projected_at(pr,dt)-210*will>1e-6*will:
