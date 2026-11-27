@@ -314,6 +314,15 @@ class Engine:
             pr=preview(chosen)
             if not safe(chosen,pr): chosen={}; pr=preview(chosen)
         rows,power,paid,fatigue,damage,ns,a,strain=pr
+        # Control local changes, not total fatigue. At extreme rates this may
+        # use intervals below the old millisecond floor so capacities evolve
+        # before the terminal root is evaluated. No fatigue is discarded.
+        if self.adaptive and rows and fatigue>2.500000001:
+            proposed=dt*min(.5,2.5/fatigue)
+            if proposed<=0 or self.time+proposed==self.time:
+                raise ArithmeticError("fatigue refinement below clock resolution")
+            self.refinements+=1
+            return self._slice(requests,proposed)
         # The approved base formulas are unchanged. Limit the duration of a
         # frozen-rate action instead of clipping earned FT or the strain term.
         # Absolute NFS/death cutoff is independent of adaptive accuracy mode.
@@ -428,7 +437,7 @@ class Engine:
             x=clamp((nfs-120*will)/(90*will))
             p=x*x*(a*a if s.protected else 1.)
             self.hazard-=(-math.log1p(-p)*dt if p<1 else math.inf)
-            if nfs>=210*will or self.hazard<=0: self.transition("UNCONSCIOUS")
+            if cutoff=="UNCONSCIOUS" or nfs>=210*will or self.hazard<=0: self.transition("UNCONSCIOUS")
         if self.label()==start_state: s.elapsed+=dt
         if s.unconscious and nfs<=180*will and s.elapsed>=3+7*(1-s.hp/c.hpmax):
             self.transition("PROTECTED")
@@ -445,7 +454,7 @@ class Engine:
         active_overshoot=max(0.,nfs-210*will) if rows and start_state not in ('UNCONSCIOUS','DEAD') else 0.
         row=dict(time=self.time,dt=dt,before=before,paid=paid,recovered=recovered,
                  active_nfs_overshoot=active_overshoot,terminal_cutoff=cutoff,cutoff_width=cutoff_width,
-                 active_seconds=dt if rows else 0.,
+                 active_seconds=dt if rows else 0.,active_ft_delta=fatigue if rows else 0.,
                  clamp=initial_clamp+final_clamp,after=s.st,power=power,budget=allowed if limited else power,
                  budget_excess=budget_excess,burst=burst,sustainable=sustainable,
                  natural_power=mode_power["natural"],forced_power=mode_power["forced"],maximum_power=mode_power["maximum"],
