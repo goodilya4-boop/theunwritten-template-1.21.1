@@ -49,8 +49,9 @@ def simulate(c,version,seed,scenario,dt,seconds=None,reverse=False,adaptive=True
                 for threshold in row["crossed_thresholds"]:
                     actual=threshold*(c.will/10)**.4
                     fraction=(actual-row["nfs_start"])/(row["nfs"]-row["nfs_start"])
+                    terminal=threshold==210 and row["terminal_cutoff"]=="UNCONSCIOUS" and row["nfs"]>=actual
                     event_sink(dict(kind="NFS",threshold=threshold,direction="up" if row["nfs"]>row["nfs_start"] else "down",
-                                    time_lo=row["time"]-row["dt"],time_hi=row["time"],estimate=row["time"]-row["dt"]+row["dt"]*fraction,
+                                    time_lo=row["time"]-(row["cutoff_width"] if terminal else row["dt"]),time_hi=row["time"],estimate=row["time"] if terminal else row["time"]-row["dt"]+row["dt"]*fraction,
                                     state_from=row["start_state"],state_to=state))
                 if previous!=state:
                     event_sink(dict(kind="STATE",threshold="",direction="",time_lo=row["time"]-row["dt"],time_hi=row["time"],estimate="",state_from=previous,state_to=state))
