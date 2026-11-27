@@ -46,14 +46,15 @@ def connect(path,manifest):
     return db
 
 def unfinished(db,jobs):
-    # Ordered merge with on-disk IDs, no million-element set.
-    done=iter(db.execute("SELECT id FROM results ORDER BY id"))
-    current=next(done,None)
+    # Read a bounded ID window before writing to the same connection.
+    block=-1
+    done=set()
     for job in jobs:
         i=job[0]
-        while current is not None and current[0]<i: current=next(done,None)
-        if current is None or current[0]!=i: yield job
-        else: current=next(done,None)
+        if i//1024!=block:
+            block=i//1024
+            done={r[0] for r in db.execute("SELECT id FROM results WHERE id>=? AND id<?",(block*1024,(block+1)*1024))}
+        if i not in done: yield job
 
 def save(db,result):
     i,row=result
