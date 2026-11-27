@@ -205,7 +205,7 @@ class Engine:
         zone_used={mode:[0.,0.,0.] for mode in mode_power}
         zone_limits=[sustainable if s.protected else sustainable+extra*math.exp(-(s.bl[0]+b)/5) for b in s.bl[1:]]
         # V4-V6 share one proportional group; V7 allocates by priority.
-        groups=range(5) if self.version==7 else (None,)
+        groups=sorted({v[0].priority for v in info.values()}) if self.version==7 else ((None,) if info else ())
         for priority in groups:
             pending=sorted((key for key,v in info.items() if priority is None or v[0].priority==priority))
             while pending:
@@ -266,6 +266,8 @@ class Engine:
                     occupied|=info[key][0].channels
                 break
 
+        con_deficit_factor=con**.2
+
         def prepare(intensities, rows=None):
             rows={key:evaluate(key,i) for key,i in intensities.items()} if rows is None else rows
             power=sum(row[1] for row in rows.values())
@@ -287,7 +289,7 @@ class Engine:
             demand=power*dt_local
             paid=min(max(0.,min(s.st,available)),demand)
             deficit=demand-paid
-            harmful=.5*deficit/(con**.2)+overload_rate*dt_local
+            harmful=.5*deficit/con_deficit_factor+overload_rate*dt_local
             strain=paid*strain_per_paid
             fatigue=harmful+paid*activity_per_paid+strain
             damage=exhaustion_damage(s.ft,fatigue,harmful)+mechanical_rate*dt_local
