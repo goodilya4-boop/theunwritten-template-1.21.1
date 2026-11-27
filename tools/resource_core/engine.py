@@ -338,7 +338,7 @@ class Engine:
                  precision=precision,hold=hold,peak_force=peak_force,max_q=max([0.]+[v[2] for v in rows.values()]),
                  strain=strain,requested_seconds=len(active)*dt,
                  fulfilled_seconds=sum(dt for i in chosen.values() if i>=1-1e-8),
-                 rejected=len(active)-len(chosen),bl=max(s.bl),state=self.label(),
+                 rejected=len(active)-len(chosen),bl=max(s.bl),start_state=start_state,state=self.label(),
                  unconscious=s.unconscious,protected=s.protected,recovering=s.recovering)
         assert abs(before-paid+recovered-row["clamp"]-s.st)<1e-7
         assert 0<=s.st<=cap+1e-8 and 0<=s.ns<=1 and 0<=s.hp<=c.hpmax and s.ft>=0
