@@ -72,6 +72,7 @@ def execute(db,jobs,workers,limit=None):
         for job in pending_jobs:
             save(db,worker(job))
             count+=1
+            if count%1000==0: print(f"committed_new={count}",flush=True)
         return count
     with ProcessPoolExecutor(max_workers=workers) as pool:
         futures=set()
@@ -86,6 +87,7 @@ def execute(db,jobs,workers,limit=None):
             for future in done:
                 save(db,future.result())
                 count+=1
+                if count%1000==0: print(f"committed_new={count}",flush=True)
     return count
 
 def export(db,path):
@@ -111,6 +113,7 @@ def main():
     p.add_argument("--seconds",type=float)
     p.add_argument("--dt",type=float,default=.05)
     p.add_argument("--repeats",type=int)
+    p.add_argument("--no-export",action="store_true",help="checkpoint only; export later with --limit 0")
     p.add_argument("--limit",type=int,help="stop after this many additional results, for resume tests")
     args=p.parse_args()
     repeats=args.repeats if args.repeats is not None else (10 if args.full else 2)
@@ -132,7 +135,7 @@ def main():
     start=time.perf_counter()
     try:
         count=execute(db,tasks(configs,cases,repeats,args.dt,args.seconds),args.workers,args.limit)
-        export(db,args.output)
+        if not args.no_export: export(db,args.output)
         done=db.execute("SELECT count(*) FROM results").fetchone()[0]
         print(f"new={count} completed={done}/{total} seconds={time.perf_counter()-start:.3f}")
     finally:
