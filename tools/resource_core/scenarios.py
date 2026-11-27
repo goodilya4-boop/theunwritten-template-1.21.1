@@ -22,6 +22,10 @@ class Action:
             "sprint":(6,.65,2,.01),"walk":(0,.65,2,.01),"jump":(4,.5,2,.01),
             "aim":(2,.25,1.5,.01),"block":(3,.4,2.5,.01),
             "swim":(3,.65,2,.01),"climb":(4,.65,2,.01)}[self.kind]
+        # Discrete action base is per completed event; convert to a rate once.
+        if self.kind=="strike" and self.power<=10: base=5.
+        if self.kind in ("strike","jump","lift") or (self.kind=="force" and self.duration<1):
+            base/=self.duration
         return Request(key,self.priority,self.power,minimum,self.channels,duration,1e9,
                        omega,self.kind,self.mode,base,gamma,self.efficiency,self.load,self.support)
 
@@ -93,12 +97,12 @@ SCENARIOS=(
  S("wake",1200,st=0,ft=210,state="UNCONSCIOUS"),
  S("critical_wake",1800,hp=.01,st=0,ft=210,state="UNCONSCIOUS"),
  S("support",120,Action("lift",100,support=2)),
- S("paid_fatigue",5,force),
+ S("paid_fatigue",5,Action("hold",5,channels=3)),
  S("old_fatigue",120,force,ft=80),
  S("safety",120,Action("force",100,load=2),hp=.06,ft=80,st=.1),
  S("reserve",120,force,st=.02,ft=40),
  S("override",120,maximum,hp=.05,ft=100,st=0),
- S("two_phase",1800,st=0,ft=210,state="UNCONSCIOUS"),
+ S("two_phase",1800,hp=.5,st=0,ft=90,state="UNCONSCIOUS"),
  Scenario("relapse",(P(30),P(120,maximum),P(450)),st=0,ft=170,state="UNCONSCIOUS"),
  S("unconscious_rest",120,st=0,ft=180,state="UNCONSCIOUS"),
  Scenario("cycle",(P(20,heavy),P(10))*10),
