@@ -22,7 +22,12 @@ def groups(rows,keys):
     return out
 
 def evaluate(pilot,racial=(),endurance=(),recovery=(),sensitivity=(),pareto=(),passed_tests=()):
-    rows=list(pilot)+list(racial)+list(endurance)+list(recovery)
+    unique={}
+    for r in list(pilot)+list(racial)+list(endurance)+list(recovery):
+        key=tuple(r[k] for k in ("race","level","build","version","scenario","seed","dt","duration"))
+        if key in unique and r!=unique[key]: raise ValueError(f"conflicting duplicate run: {key}")
+        unique[key]=r
+    rows=list(unique.values())
     tests=set(passed_tests)
     report=[dict(id=i+1,criterion=name,status="NOT_TESTED",evidence="No sufficient evidence supplied") for i,name in enumerate(CRITERIA)]
     def set_(i,status,evidence): report[i-1].update(status=status,evidence=evidence)
