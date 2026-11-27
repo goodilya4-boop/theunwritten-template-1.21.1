@@ -5,7 +5,7 @@ from engine import Engine
 from matrix import configurations
 from scenarios import scenarios
 
-SUMS=("work","distance","precision","hold","damage","paid","recovered","clamp","strain")
+SUMS=("work","distance","precision","hold","damage","paid","recovered","clamp","strain","requested_seconds","fulfilled_seconds")
 PEAKS=("bl","nfs","ft","peak_force","max_q")
 FIELDS=("race","level","build","version","scenario","seed","dt","duration","hp","st","ft","ns","state","steps",
         *SUMS,*("peak_"+x if x!="peak_force" else x for x in PEAKS),
