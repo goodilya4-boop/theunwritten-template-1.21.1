@@ -13,9 +13,9 @@ class RegressionTests(unittest.TestCase):
     def test_shared_budget(self):
         for version in (6,7):
             e=Engine(Character(),version)
-            e.step([Request(str(i),2,80,.01,1<<i,.05,1000) for i in range(3)])
+            e.step([Request(str(i),2,80,.01,1<<i,.05,1000,mode="forced") for i in range(3)])
             row=e.ledger[-1]
-            self.assertLessEqual(row["power"],row["budget"]+1e-8)
+            self.assertLessEqual(row["budget_excess"],1e-8)
 
     def test_damage(self):
         e=Engine(Character(),4)
