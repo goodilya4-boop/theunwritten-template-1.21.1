@@ -341,8 +341,11 @@ class Engine:
             pr=preview(chosen,dt,rows)
             cutoff=terminal(pr,dt)
             if not cutoff: raise ArithmeticError("terminal event bracket lost")
+            if projected_at(pr,dt)-210*will>1e-6*will:
+                raise ArithmeticError("terminal NFS overshoot exceeds numerical tolerance")
             cutoff_width=hi-lo
             self.cutoffs+=1
+            self.refinements+=1
             rows,power,paid,fatigue,damage,ns,a,strain=pr
         # Refine BEFORE committing any resource/action effects. The outer step
         # integrates the remaining interval, preserving event start/end times.
