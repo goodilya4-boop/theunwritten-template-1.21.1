@@ -46,7 +46,10 @@ def evaluate(pilot,racial=(),endurance=(),recovery=(),sensitivity=(),pareto=(),p
         bad=sum(num(r,"max_budget_excess")>1e-8 for r in rows)
         set_(12,"FAIL" if bad else "PASS_PILOT",f"{len(rows)} aggregate budget checks; {bad} unauthorized exceedances; maximum-mode excess separately allowed")
         bad=sum(num(r,"nfs_violation")>0 for r in rows)
-        set_(21,"FAIL" if bad else "PASS_PILOT",f"{len(rows)} runs; {bad} runs with an absolute NFS post-step violation")
+        observed=[r for r in rows if "max_active_nfs_overshoot" in r]
+        excessive=sum(num(r,"max_active_nfs_overshoot")>1e-6*num(r,"will_factor") for r in observed)
+        status="FAIL" if bad or excessive else "PASS_PILOT" if len(observed)==len(rows) else "PARTIAL"
+        set_(21,status,f"{len(rows)} runs; post-step violations {bad}; active-cutoff overshoot violations {excessive}/{len(observed)}; tolerance 1e-6 times will factor")
         wake=[r for r in recovery if r["scenario"] in ("wake","critical_wake","two_phase") and num(r,"duration")>=15]
         if wake:
             bad=sum(not r["wake_seconds"] or num(r,"wake_seconds")>15 for r in wake)
@@ -150,7 +153,7 @@ def main():
     p.add_argument("pilot")
     for option in ("racial","endurance","recovery","sensitivity","pareto"): p.add_argument("--"+option)
     p.add_argument("--run-tests",action="store_true")
-    p.add_argument("--output",default="acceptance_v4")
+    p.add_argument("--output",default="acceptance_v5")
     a=p.parse_args()
     passed=[]
     test_ok=None
@@ -162,9 +165,9 @@ def main():
     kwargs={k:load(getattr(a,k)) if getattr(a,k) else [] for k in ("racial","endurance","recovery","sensitivity","pareto")}
     report=evaluate(load(a.pilot),passed_tests=passed,**kwargs)
     counts={s:sum(r["status"]==s for r in report) for s in ("PASS_PILOT","PARTIAL","CONFLICT","FAIL","NOT_TESTED")}
-    data=dict(scope="Pilot V4 evidence only; not production acceptance",counts=counts,tests_ok=test_ok,criteria=report)
+    data=dict(scope="Pilot V5 evidence only; not production acceptance",counts=counts,tests_ok=test_ok,criteria=report)
     Path(a.output+".json").write_text(json.dumps(data,indent=2),encoding="utf-8")
-    lines=["# Resource Core — Pilot V4 acceptance","",data["scope"],"",str(counts),"","| # | Criterion | Status | Evidence |","|---:|---|---|---|"]
+    lines=["# Resource Core — Pilot V5 acceptance","",data["scope"],"",str(counts),"","| # | Criterion | Status | Evidence |","|---:|---|---|---|"]
     lines.extend(f"| {r['id']} | {r['criterion']} | {r['status']} | {r['evidence'].replace('|','/')} |" for r in report)
     Path(a.output+".md").write_text("\n".join(lines)+"\n",encoding="utf-8")
     print(counts)
