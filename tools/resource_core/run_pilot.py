@@ -1,5 +1,6 @@
 """Pilot V4 / full matrix runner with fixed physical events and streaming CSV."""
 import argparse,csv,time,math
+from contextlib import ExitStack
 from dataclasses import replace
 from engine import Engine
 from matrix import configurations
@@ -11,7 +12,7 @@ FIELDS=("race","level","build","version","scenario","seed","dt","duration","hp",
         *SUMS,*("peak_"+x if x!="peak_force" else x for x in PEAKS),
         "hpmax","stmax","will_factor","max_crossing_width","initial_ft","theoretical_force","refinements","peak_intentional_excess","peak_natural_power","peak_forced_power","peak_maximum_power","scheduled_seconds","rejected_seconds","ko_seconds","protected_seconds","recovering_seconds","ko_events","wake_seconds","max_budget_excess","st_fraction","hp_fraction")
 
-def simulate(c,version,seed,scenario,dt,seconds=None,reverse=False,adaptive=True):
+def simulate(c,version,seed,scenario,dt,seconds=None,reverse=False,adaptive=True,event_sink=None):
     e=Engine(c,version,seed,adaptive=adaptive)
     scenario.initialize(e)
     initial_ft=e.state.ft
@@ -44,6 +45,15 @@ def simulate(c,version,seed,scenario,dt,seconds=None,reverse=False,adaptive=True
             for k in SUMS: sums[k]+=row[k]
             for k in PEAKS: peaks[k]=max(peaks[k],row[k])
             state=row["state"]
+            if event_sink is not None:
+                for threshold in row["crossed_thresholds"]:
+                    actual=threshold*(c.will/10)**.4
+                    fraction=(actual-row["nfs_start"])/(row["nfs"]-row["nfs_start"])
+                    event_sink(dict(kind="NFS",threshold=threshold,direction="up" if row["nfs"]>row["nfs_start"] else "down",
+                                    time_lo=row["time"]-row["dt"],time_hi=row["time"],estimate=row["time"]-row["dt"]+row["dt"]*fraction,
+                                    state_from=row["start_state"],state_to=state))
+                if previous!=state:
+                    event_sink(dict(kind="STATE",threshold="",direction="",time_lo=row["time"]-row["dt"],time_hi=row["time"],estimate="",state_from=previous,state_to=state))
             if row["start_state"] in times: times[row["start_state"]]+=row["dt"]
             if state=="UNCONSCIOUS" and previous!="UNCONSCIOUS":
                 kos+=1
@@ -75,6 +85,7 @@ def main():
     p.add_argument("--races",help="comma-separated races or all; default human")
     p.add_argument("--levels",help="comma-separated levels; default 100")
     p.add_argument("--builds",help="comma-separated builds or all")
+    p.add_argument("--events-output",help="optional NFS and consciousness event CSV")
     p.add_argument("--fixed-step",action="store_true",help="disable critical refinement")
     p.add_argument("--scenarios",help="comma-separated scenario names")
     p.add_argument("--reverse",action="store_true")
@@ -97,7 +108,13 @@ def main():
         if {s.name for s in cases}!=names: p.error("unknown scenario")
     start=time.perf_counter()
     count=steps=0
-    with open(args.output,"w",newline="",encoding="utf-8") as f:
+    with ExitStack() as stack:
+        f=stack.enter_context(open(args.output,"w",newline="",encoding="utf-8"))
+        event_writer=None
+        if args.events_output:
+            ef=stack.enter_context(open(args.events_output,"w",newline="",encoding="utf-8"))
+            event_writer=csv.DictWriter(ef,fieldnames=("race","level","build","version","scenario","seed","dt","kind","threshold","direction","time_lo","time_hi","estimate","state_from","state_to"))
+            event_writer.writeheader()
         out=csv.DictWriter(f,fieldnames=FIELDS)
         out.writeheader()
         for race,level,build,c,dex in configs:
@@ -105,8 +122,10 @@ def main():
             for version in (4,5,6,7):
                 for scenario in cases:
                     for seed in range(repeats):
-                        row=simulate(c,version,seed,scenario,args.dt,args.seconds,args.reverse,not args.fixed_step)
-                        out.writerow(dict(race=race,level=level,build=build,version=version,scenario=scenario.name,seed=seed,**row))
+                        key=dict(race=race,level=level,build=build,version=version,scenario=scenario.name,seed=seed)
+                        sink=(lambda event:event_writer.writerow(dict(**key,dt=args.dt,**event))) if event_writer else None
+                        row=simulate(c,version,seed,scenario,args.dt,args.seconds,args.reverse,not args.fixed_step,sink)
+                        out.writerow(dict(**key,**row))
                         count+=1
                         steps+=row["steps"]
             f.flush()
