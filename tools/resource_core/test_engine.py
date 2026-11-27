@@ -1,5 +1,6 @@
 import unittest
 from allocator import Request, allocate
+from dataclasses import replace
 from engine import Engine, Character
 
 def request(key="a", priority=2, channels=1, power=20):
@@ -24,16 +25,17 @@ class ResourceTests(unittest.TestCase):
 
     def test_ledger(self):
         e=Engine(Character())
-        for _ in range(100):
-            e.step([request()])
+        for i in range(100):
+            e.step([replace(request(str(i)),duration=.05)])
         for r in e.ledger:
             self.assertAlmostEqual(r["before"]-r["paid"]+r["recovered"]-r["clamp"],r["after"])
 
     def test_seed(self):
         a,b=Engine(Character(),seed=42),Engine(Character(),seed=42)
-        for _ in range(100):
-            a.step([request()])
-            b.step([request()])
+        for i in range(100):
+            r=replace(request(str(i)),duration=.05)
+            a.step([r])
+            b.step([r])
         self.assertEqual(a.ledger,b.ledger)
 
 if __name__=="__main__":
