@@ -1,9 +1,10 @@
 import csv
+import math
 import tempfile
 import unittest
 from pathlib import Path
 from allocator import Request
-from engine import Engine, Character
+from engine import Engine, Character, nfs_stationary_times
 from matrix import configurations
 from scenarios import S, Action, SCENARIOS
 from run_pilot import simulate
@@ -139,3 +140,10 @@ class PilotV5Tests(unittest.TestCase):
         b=simulate(Character(),5,0,split,.025,adaptive=False)
         self.assertAlmostEqual(a["work"],b["work"],places=7)
         self.assertGreaterEqual(b["paid"],a["paid"])
+
+    def test_internal_nfs_maximum_not_visible_at_endpoints(self):
+        points=nfs_stationary_times(209.9,140,0,1,1,0,1)
+        nfs=lambda t:(209.9+140*t)*(.35+.65*math.exp(-t))
+        self.assertLess(nfs(0),210)
+        self.assertLess(nfs(1),210)
+        self.assertTrue(any(nfs(t)>210 for t in points))
