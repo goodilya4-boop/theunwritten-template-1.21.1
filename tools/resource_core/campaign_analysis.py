@@ -16,6 +16,7 @@ def core_check(r):
     failures=[]
     if hm<=0 or sm<=0 or w<=0 or not (0<=hp<=hm+1e-8 and ft>=0 and 0<=ns<=1 and 0<=st<=sm/(1+ft/200)+1e-8):
         failures.append("resource_bounds")
+    if min(initial,gained,recovered,budget,overshoot,nfs)<0: failures.append("negative_ledger")
     if abs(initial+gained-recovered-ft)>1e-6: failures.append("fatigue_ledger")
     if budget>1e-8: failures.append("budget")
     if nfs or overshoot>1e-6*w: failures.append("nfs")
@@ -39,6 +40,13 @@ def analyze(path,output,pareto_output,requirements=None):
             steps+=r["steps"]
             reasons=core_check(r)
             if not 0<=i<manifest["total"]: reasons.append("id_range")
+            elif "scenarios" in manifest:
+                config_i,rest=divmod(i,4*len(manifest["scenarios"])*manifest["repeats"])
+                version_i,rest=divmod(rest,len(manifest["scenarios"])*manifest["repeats"])
+                case_i,seed=divmod(rest,manifest["repeats"])
+                expected=tuple(manifest["configs"][config_i])+(4+version_i,manifest["scenarios"][case_i],seed)
+                actual=tuple(r[k] for k in ("race","level","build","version","scenario","seed"))
+                if actual!=expected or r["dt"]!=manifest["dt"]: reasons.append("identity")
             overshoot=max(overshoot,float(r["max_active_nfs_overshoot"]))
             if reasons:
                 bad+=1
@@ -69,7 +77,7 @@ def analyze(path,output,pareto_output,requirements=None):
                 for r in fronts(g,requirements=requirements):
                     writer.writerow(r)
                     pareto_count+=1
-        data=dict(expected=manifest["total"],completed=count,complete=count==manifest["total"] and incomplete==0 and not errors.get("id_range"),steps=steps,
+        data=dict(expected=manifest["total"],completed=count,complete=count==manifest["total"] and incomplete==0 and not errors.get("id_range") and not errors.get("identity"),steps=steps,
                   core_failures=bad,errors=errors,examples=examples,max_active_nfs_overshoot=overshoot,
                   matched_groups=group_count,incomplete_groups=incomplete,pareto_rows=pareto_count,
                   scope="Core invariants and matched task Pareto only; not full 24-criterion balance acceptance.")
