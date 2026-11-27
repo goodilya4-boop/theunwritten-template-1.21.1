@@ -23,3 +23,11 @@ class AnalysisTests(unittest.TestCase):
         out={r["metric"]:r for r in compare({("a",):a},{("a",):b})}
         self.assertEqual(out["work"]["mean_abs_delta"],1)
         with self.assertRaises(ValueError): list(compare({("a",):a},{}))
+
+    def test_pareto_floor(self):
+        a=dict(race="human",level="1",version="7",scenario="force",dt=".05",duration="1",seed="0",
+               work="10",distance="0",precision="0",hold="0",peak_force="10",damage="0",paid="10",ft_gained="1",build="a")
+        b=dict(a,build="b",work="1",peak_force="1",paid="0")
+        result={r["build"]:r for r in fronts([a,b],.5)}
+        self.assertEqual(result["b"]["eligible"],0)
+        self.assertEqual(result["b"]["pareto"],0)
