@@ -5,28 +5,42 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: resource-core-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: tools/resource_core
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: python -m unittest discover -s tools/resource_core -v
-      - run: python tools/resource_core/run_pilot.py --seconds 5 --output pilot_v4.csv
-      - run: python tools/resource_core/run_pilot.py --seconds 5 --dt 0.025 --output pilot_v4_dt025.csv
-      - run: python tools/resource_core/run_pilot.py --seconds 5 --dt 0.1 --output pilot_v4_dt100.csv
-      - run: python tools/resource_core/sensitivity.py pilot_v4.csv pilot_v4_dt025.csv pilot_v4_dt100.csv
-      - run: python tools/resource_core/pareto.py pilot_v4.csv
-      - run: python tools/resource_core/run_pilot.py --races all --levels 1,30,100 --builds equal,STR,CON,DEX,STR_CON,STR75_CON25 --scenarios max_single_effort,fixed_absolute,carry_distance,hold,sprint_series,coordination,attack_defense,single_burst --seconds 5 --output racial_v4.csv
-      - run: python tools/resource_core/run_pilot.py --scenarios wake,critical_wake,two_phase,protected_walk,relapse --seconds 180 --output recovery_v4.csv --events-output events_v4.csv
-      - run: python tools/resource_core/run_pilot.py --scenarios fixed_absolute,sustained,carry_distance,hold --output endurance_v4.csv
-      - run: python tools/resource_core/acceptance.py pilot_v4.csv --racial racial_v4.csv --endurance endurance_v4.csv --recovery recovery_v4.csv --sensitivity sensitivity_v4.csv --pareto pareto_v4.csv --run-tests
+      - run: python -m unittest discover -v
+      - run: python run_pilot.py --scenarios instant_repeat,max_single_effort,single_burst,fixed_absolute,attack_defense,carry_distance --seconds 5 --output pilot_v5.csv --events-output events_v5.csv
+      - run: python run_pilot.py --scenarios instant_repeat,max_single_effort,single_burst,fixed_absolute,attack_defense,carry_distance --seconds 5 --dt 0.025 --output pilot_v5_dt025.csv
+      - run: python run_pilot.py --scenarios instant_repeat,max_single_effort,single_burst,fixed_absolute,attack_defense,carry_distance --seconds 5 --dt 0.1 --output pilot_v5_dt100.csv
+      - run: python sensitivity.py pilot_v5.csv pilot_v5_dt025.csv pilot_v5_dt100.csv
+      - run: python pareto.py pilot_v5.csv --absolute
+      - run: python distribution.py pilot_v5.csv --group version,scenario,dt
+      - run: python campaign.py --db resume_v5.sqlite --output resume_v5.csv --workers 2 --builds STR,CON --scenarios instant_repeat,fixed_absolute --seconds 5 --repeats 2 --limit 11
+      - run: python campaign.py --db resume_v5.sqlite --output resume_v5.csv --workers 2 --builds STR,CON --scenarios instant_repeat,fixed_absolute --seconds 5 --repeats 2
+      - run: python campaign.py --db serial_v5.sqlite --output serial_v5.csv --workers 1 --builds STR,CON --scenarios instant_repeat,fixed_absolute --seconds 5 --repeats 2
+      - run: cmp resume_v5.csv serial_v5.csv
+      - run: python campaign_analysis.py resume_v5.sqlite
+      - run: python campaign_sensitivity.py resume_v5.sqlite serial_v5.sqlite
+      - run: python profile_pilot.py --seconds 2
+      - run: python acceptance.py pilot_v5.csv --sensitivity sensitivity_v5.csv --pareto pareto_v5.csv --run-tests
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: resource-core-pilot-v4
+          name: resource-core-pilot-v5-smoke
           path: |
-            *_v4*.csv
-            acceptance_v4.*
+            tools/resource_core/*_v5*.csv
+            tools/resource_core/*_v5*.json
+            tools/resource_core/acceptance_v5.md
+            tools/resource_core/profile_v5.*
