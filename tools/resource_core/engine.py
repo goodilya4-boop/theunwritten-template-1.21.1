@@ -67,6 +67,7 @@ class Engine:
         self.rng=random.Random(seed)
         self.hazard=self.rng.expovariate(1)
         self.reservations={}
+        self.seen_ids=set()
         self.ledger=[]
         self.keep_ledger=keep_ledger
         self.last=None
@@ -96,7 +97,7 @@ class Engine:
         values=(r.power,r.minimum,r.duration,r.local_limit,r.omega,r.base,r.gamma,r.efficiency,r.load,r.support)
         if not all(math.isfinite(x) for x in values) or not (
             r.power>=0 and 0<=r.minimum<=1 and r.duration>0 and r.local_limit>=0
-            and 0<=r.omega<=1 and r.base>=0 and r.gamma>=1 and r.efficiency>0
+            and 0<=r.omega<=1 and r.base>=0 and r.gamma>=1 and 1<=r.efficiency<=3
             and r.load>0 and r.support>0 and 0<=r.priority<=4 and 0<r.channels<=31
             and r.kind in PROFILES and r.mode in ("natural","forced","maximum")):
             raise ValueError("invalid action")
@@ -111,6 +112,8 @@ class Engine:
         for r in requests:
             if r.id in self.reservations and self.reservations[r.id][0]!=r:
                 raise ValueError("reservation id reused with different payload")
+        requests=tuple(r for r in requests if r.id not in self.seen_ids or r.id in self.reservations)
+        self.seen_ids.update(r.id for r in requests)
         finish=self.time+dt
         first=True
         result={}
@@ -216,7 +219,7 @@ class Engine:
                         if fits(mid): lo=mid
                         else: hi=mid
                     scale=lo
-                rejected={key for key in compatible if info[key][3]*scale<info[key][0].minimum or info[key][3]*scale<=1e-12}
+                rejected={key for key in compatible if info[key][3]*scale<info[key][0].minimum*min(1.,info[key][1]/max(info[key][0].power,1e-12)) or info[key][3]*scale<=1e-12}
                 if rejected:
                     pending=[key for key in pending if key not in rejected]
                     continue
@@ -261,10 +264,10 @@ class Engine:
             lo,hi=0.,1.
             for _ in range(32):
                 mid=(lo+hi)/2
-                trial={key:i*mid for key,i in chosen.items() if i*mid>=info[key][0].minimum and i*mid>1e-12}
+                trial={key:i*mid for key,i in chosen.items() if i*mid>=info[key][0].minimum*min(1.,info[key][1]/max(info[key][0].power,1e-12)) and i*mid>1e-12}
                 if safe(trial,preview(trial)): lo=mid
                 else: hi=mid
-            chosen={key:i*lo for key,i in chosen.items() if i*lo>=info[key][0].minimum and i*lo>1e-12}
+            chosen={key:i*lo for key,i in chosen.items() if i*lo>=info[key][0].minimum*min(1.,info[key][1]/max(info[key][0].power,1e-12)) and i*lo>1e-12}
             pr=preview(chosen)
             if not safe(chosen,pr): chosen={}; pr=preview(chosen)
         rows,power,paid,fatigue,damage,ns,a,strain=pr
