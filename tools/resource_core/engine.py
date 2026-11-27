@@ -1,4 +1,4 @@
-"""Pilot V4 candidate physiology; game units, not real-world physiology."""
+"""Pilot V5 candidate physiology; game units, not real-world physiology."""
 from dataclasses import dataclass, field
 import math
 import random
@@ -77,6 +77,12 @@ class Engine:
         self.adaptive=adaptive
         self.min_slice=.001
         self.refinements=0
+        self.cutoffs=0
+        self.preview_calls=0
+        self.normalized=(character.strength/10,character.constitution/10,character.dexterity/10,character.wisdom/10)
+        st,co,de,wi=self.normalized
+        self.derived=(10*st**.9*co**.1,10*co**.9*st**.1,10*de**.8*st**.2,10*de**.85*wi**.15)
+        self.throughput=(10*co**.65*st**.15,20*st**.65*co**.15)
 
     def label(self):
         s=self.state
@@ -149,11 +155,8 @@ class Engine:
         available=c.stmax/(1+s.ft/200)
         st_fraction=clamp(s.st/available)
         e=(.3+.7*min(1,2*st_fraction))/(1+s.ft/300)
-        strength,con,dex,wis=c.strength/10,c.constitution/10,c.dexterity/10,c.wisdom/10
-        force=10*strength**.9*con**.1
-        durability=10*con**.9*strength**.1
-        speed=10*dex**.8*strength**.2
-        coordination=10*dex**.85*wis**.15
+        strength,con,dex,wis=self.normalized
+        force,durability,speed,coordination=self.derived
         recovery=1.
         if s.recovering: recovery=clamp(s.elapsed/self.recovery_duration)
         functional_force=force*e*(.7+.3*recovery)
@@ -161,8 +164,8 @@ class Engine:
         functional_coord=coordination*(.2+.8*e)*(.4+.6*recovery)
         health=.5+.5*math.sqrt(h)
         k=health/(1+s.ft/300)
-        sustainable=10*con**.65*strength**.15*k
-        extra=20*strength**.65*con**.15*k
+        sustainable=self.throughput[0]*k
+        extra=self.throughput[1]*k
         burst=sustainable+extra*math.exp(-s.bl[0]/5)
         budget=sustainable if s.protected else burst
         limited=self.version>=6 or s.protected
@@ -263,23 +266,25 @@ class Engine:
                     occupied|=info[key][0].channels
                 break
 
-        def preview(intensities):
-            rows={key:evaluate(key,i) for key,i in intensities.items()}
+        def preview(intensities, interval=None, prepared=None):
+            self.preview_calls+=1
+            dt_local=dt if interval is None else interval
+            rows=prepared if prepared is not None else {key:evaluate(key,i) for key,i in intensities.items()}
             power=sum(row[1] for row in rows.values())
-            demand=power*dt
+            demand=power*dt_local
             paid=min(max(0.,min(s.st,available)),demand)
             deficit=demand-paid
-            overload=sum(.5*row[3]*max(0.,row[2]-1)**2*dt for row in rows.values())
+            overload=sum(.5*row[3]*max(0.,row[2]-1)**2*dt_local for row in rows.values())
             activity=sum(.03*paid*row[1]/max(power,1e-12)*row[2] for row in rows.values())
             strain=.05*paid*max(0.,power/max(sustainable,1e-12)-1)**2 if self.version>=6 else 0.
             harmful=.5*deficit/(con**.2)+overload
             fatigue=harmful+activity+strain
-            damage=exhaustion_damage(s.ft,fatigue,harmful)+sum(.2*row[3]*max(0.,row[2]-1.5)**2*dt for row in rows.values())
+            damage=exhaustion_damage(s.ft,fatigue,harmful)+sum(.2*row[3]*max(0.,row[2]-1.5)**2*dt_local for row in rows.values())
             a=clamp(max([power/max(burst,1e-12)]+[.05 if info[key][0].kind=="walk" else i for key,i in intensities.items()]))
             ks=.2*health*(1. if not rows else .5 if a<=.05 else .25 if a<=.1 else 0.)
             kd=.8*a*a+.4*max([0.]+[row[2]-1 for row in rows.values()])
             eq=ks/(ks+kd) if ks+kd else s.ns
-            ns=clamp(eq+(s.ns-eq)*math.exp(-(ks+kd)*dt))
+            ns=clamp(eq+(s.ns-eq)*math.exp(-(ks+kd)*dt_local))
             return rows,power,paid,fatigue,damage,ns,a,strain
 
         def safe(values,pr):
@@ -302,6 +307,43 @@ class Engine:
             pr=preview(chosen)
             if not safe(chosen,pr): chosen={}; pr=preview(chosen)
         rows,power,paid,fatigue,damage,ns,a,strain=pr
+        # The approved base formulas are unchanged. Limit the duration of a
+        # frozen-rate action instead of clipping earned FT or the strain term.
+        # Absolute NFS/death cutoff is independent of adaptive accuracy mode.
+        cutoff=""
+        cutoff_width=0.
+        def projected_at(pv,t):
+            rs,_,_,df,damage_,ns_,a_,_=pv
+            ft=s.ft+df
+            if s.hp>damage_ and (not rs or all(info[key][0].kind=="walk" for key in rs)):
+                ft=max(0.,ft-.5*con**.4*max(.25,math.sqrt((s.hp-damage_)/c.hpmax))*t*(1. if not rs else .2))
+            return ft*(1-.65*ns_)
+        def terminal(pv,t):
+            n=projected_at(pv,t)
+            if s.hp>0 and pv[4]>=s.hp: return "DEAD"
+            if not s.unconscious and s.hp>0 and n>=210*will: return "UNCONSCIOUS"
+            return ""
+        if rows and terminal(pr,dt):
+            lo,hi=0.,dt
+            # Find the first terminal boundary in the frozen-rate preview.
+            # For positive-work profiles NFS and damage are normally monotone;
+            # verify the final bracket and fail closed on numerical failure.
+            for _ in range(80):
+                mid=(lo+hi)/2
+                if mid==lo or mid==hi: break
+                trial=preview(chosen,mid,rows)
+                if terminal(trial,mid): hi=mid
+                else: lo=mid
+                if hi-lo<=1e-12 and max(0.,projected_at(preview(chosen,hi,rows),hi)-210*will)<=1e-7*will: break
+            if hi<=0 or self.time+hi==self.time:
+                raise ArithmeticError("terminal event below representable clock resolution")
+            dt=hi
+            pr=preview(chosen,dt,rows)
+            cutoff=terminal(pr,dt)
+            if not cutoff: raise ArithmeticError("terminal event bracket lost")
+            cutoff_width=hi-lo
+            self.cutoffs+=1
+            rows,power,paid,fatigue,damage,ns,a,strain=pr
         # Refine BEFORE committing any resource/action effects. The outer step
         # integrates the remaining interval, preserving event start/end times.
         # Threshold crossing is bounded to min_slice, not claimed exact.
@@ -316,7 +358,7 @@ class Engine:
                   or (not s.unconscious and hazard_loss>=self.hazard)
                   or (s.hp>0 and damage>=s.hp))
         critical=(fatigue>2.5 or damage>max(.1,.005*c.hpmax) or (rows and projected>=110*will))
-        if self.adaptive and dt>2*self.min_slice and (crossing or (critical and dt>.005)):
+        if not cutoff and self.adaptive and dt>2*self.min_slice and (crossing or (critical and dt>.005)):
             self.refinements+=1
             return self._slice(requests,dt/2)
         mode_power={m:sum(rows[k][1] for k in rows if info[k][0].mode==m) for m in mode_power}
@@ -384,19 +426,22 @@ class Engine:
         elif s.recovering and s.elapsed>=self.recovery_duration and nfs<120*will and s.st>=.25*cap:
             self.transition("CONSCIOUS")
         elif s.recovering and s.ft>=120*will: self.transition("PROTECTED")
-        self.time=round(self.time+dt,12)
+        self.time+=dt
         crossed=[t for t in (120,180,210) if min(nfs_before,nfs)<t*will<=max(nfs_before,nfs)]
         restricted=mode_power["natural"]+mode_power["forced"]
         allowed=1.25*budget if mode_power["forced"]>0 else budget
         budget_excess=max(0.,mode_power["natural"]-budget,restricted-allowed) if limited else 0.
+        active_overshoot=max(0.,nfs-210*will) if rows and start_state not in ('UNCONSCIOUS','DEAD') else 0.
         row=dict(time=self.time,dt=dt,before=before,paid=paid,recovered=recovered,
+                 active_nfs_overshoot=active_overshoot,terminal_cutoff=cutoff,cutoff_width=cutoff_width,
+                 active_seconds=dt if rows else 0.,
                  clamp=initial_clamp+final_clamp,after=s.st,power=power,budget=allowed if limited else power,
                  budget_excess=budget_excess,burst=burst,sustainable=sustainable,
                  natural_power=mode_power["natural"],forced_power=mode_power["forced"],maximum_power=mode_power["maximum"],
                  intentional_excess=max(0.,power-allowed) if limited else 0.,
                  ft_gained=fatigue,ft_recovered=max(0.,ft_before+fatigue-s.ft),
                  theoretical_force=force,carry_work=carry_work,carry_distance=carry_distance,
-                 nfs_crossings=len(crossed),crossing_width=dt if crossed else 0.,
+                 nfs_crossings=len(crossed),crossing_width=(cutoff_width if cutoff and crossed==[210] else dt) if crossed else 0.,
                  nfs_start=nfs_before,crossed_thresholds=tuple(crossed),
                  nfs_violation=int(s.hp>0 and nfs>=210*will and not s.unconscious),
                  ft=s.ft,nfs=nfs,hp=s.hp,damage=hp_before-s.hp,work=work,distance=distance,
