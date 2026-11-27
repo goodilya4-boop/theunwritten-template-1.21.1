@@ -5,11 +5,11 @@ from engine import Engine
 from matrix import configurations
 from scenarios import scenarios
 
-SUMS=("work","distance","precision","hold","damage","paid","recovered","clamp","strain","requested_seconds","fulfilled_seconds","ft_gained","ft_recovered","carry_work","carry_distance")
+SUMS=("work","distance","precision","hold","damage","paid","recovered","clamp","strain","requested_seconds","fulfilled_seconds","ft_gained","ft_recovered","carry_work","carry_distance","nfs_crossings","nfs_violation")
 PEAKS=("bl","nfs","ft","peak_force","max_q")
 FIELDS=("race","level","build","version","scenario","seed","dt","duration","hp","st","ft","ns","state","steps",
         *SUMS,*("peak_"+x if x!="peak_force" else x for x in PEAKS),
-        "initial_ft","theoretical_force","refinements","peak_intentional_excess","peak_natural_power","peak_forced_power","peak_maximum_power","scheduled_seconds","rejected_seconds","ko_seconds","protected_seconds","recovering_seconds","ko_events","wake_seconds","max_budget_excess","st_fraction","hp_fraction")
+        "hpmax","stmax","will_factor","max_crossing_width","initial_ft","theoretical_force","refinements","peak_intentional_excess","peak_natural_power","peak_forced_power","peak_maximum_power","scheduled_seconds","rejected_seconds","ko_seconds","protected_seconds","recovering_seconds","ko_events","wake_seconds","max_budget_excess","st_fraction","hp_fraction")
 
 def simulate(c,version,seed,scenario,dt,seconds=None,reverse=False,adaptive=True):
     e=Engine(c,version,seed,adaptive=adaptive)
@@ -25,7 +25,7 @@ def simulate(c,version,seed,scenario,dt,seconds=None,reverse=False,adaptive=True
     peaks.update(bl=max(e.state.bl),ft=e.state.ft,nfs=e.state.ft*(1-.65*e.state.ns))
     scheduled=sum(min(r.duration,end-t) for t,req in events for r in req)
     times={k:0. for k in ("UNCONSCIOUS","PROTECTED","RECOVERING")}
-    rejected=excess=0.
+    rejected=excess=cross_width=0.
     previous=e.label()
     kos=0
     wake=None
@@ -53,11 +53,13 @@ def simulate(c,version,seed,scenario,dt,seconds=None,reverse=False,adaptive=True
             previous=state
             rejected+=row["rejected"]*row["dt"]
             excess=max(excess,row["budget_excess"])
+            cross_width=max(cross_width,row["crossing_width"])
             for k in extra_peaks: extra_peaks[k]=max(extra_peaks[k],row[k])
         e.ledger.clear()
     s=e.state
     return dict(dt=dt,duration=end,hp=s.hp,st=s.st,ft=s.ft,ns=s.ns,state=e.label(),steps=steps,
                 **sums,**{("peak_"+k if k!="peak_force" else k):v for k,v in peaks.items()},
+                hpmax=c.hpmax,stmax=c.stmax,will_factor=(c.will/10)**.4,max_crossing_width=cross_width,
                 initial_ft=initial_ft,theoretical_force=theoretical_force,refinements=e.refinements,
                 **{"peak_"+k:v for k,v in extra_peaks.items()},scheduled_seconds=scheduled,rejected_seconds=rejected,ko_seconds=times["UNCONSCIOUS"],protected_seconds=times["PROTECTED"],
                 recovering_seconds=times["RECOVERING"],ko_events=kos,wake_seconds="" if wake is None else wake,
