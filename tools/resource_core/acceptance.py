@@ -48,8 +48,9 @@ def evaluate(pilot,racial=(),endurance=(),recovery=(),sensitivity=(),pareto=(),p
         bad=sum(num(r,"nfs_violation")>0 for r in rows)
         observed=[r for r in rows if "max_active_nfs_overshoot" in r]
         excessive=sum(num(r,"max_active_nfs_overshoot")>1e-6*num(r,"will_factor") for r in observed)
+        maximum=max((num(r,"max_active_nfs_overshoot")/num(r,"will_factor") for r in observed),default=0.)
         status="FAIL" if bad or excessive else "PASS_PILOT" if len(observed)==len(rows) else "PARTIAL"
-        set_(21,status,f"{len(rows)} runs; post-step violations {bad}; active-cutoff overshoot violations {excessive}/{len(observed)}; tolerance 1e-6 times will factor")
+        set_(21,status,f"{len(rows)} runs; post-step violations {bad}; active-cutoff overshoot violations {excessive}/{len(observed)}; max normalized overshoot {maximum:.9g}; tolerance 1e-6 times will factor")
         wake=[r for r in recovery if r["scenario"] in ("wake","critical_wake","two_phase") and num(r,"duration")>=15]
         if wake:
             bad=sum(not r["wake_seconds"] or num(r,"wake_seconds")>15 for r in wake)
