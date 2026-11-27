@@ -14,8 +14,17 @@ jobs:
         with:
           python-version: '3.12'
       - run: python -m unittest discover -s tools/resource_core -v
-      - run: python tools/resource_core/run_pilot.py --seconds 1 --output pilot.csv
+      - run: python tools/resource_core/run_pilot.py --seconds 5 --output pilot.csv
+      - run: python tools/resource_core/run_pilot.py --scenarios wake,critical_wake,two_phase,protected_walk,request_order,instant_repeat --seconds 30 --output targeted.csv
+      - run: python tools/resource_core/run_pilot.py --seconds 5 --dt 0.025 --output pilot_dt025.csv
+      - run: python tools/resource_core/run_pilot.py --seconds 5 --dt 0.1 --output pilot_dt100.csv
+      - run: python tools/resource_core/sensitivity.py pilot.csv pilot_dt025.csv pilot_dt100.csv
+      - run: python tools/resource_core/pareto.py pilot.csv
       - uses: actions/upload-artifact@v4
         with:
-          name: resource-core-smoke
-          path: pilot.csv
+          name: resource-core-pilot-v3
+          path: |
+            pilot*.csv
+            targeted.csv
+            sensitivity_v3.csv
+            pareto_v3.csv
