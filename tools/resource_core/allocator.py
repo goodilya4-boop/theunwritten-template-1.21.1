@@ -12,6 +12,13 @@ class Request:
     duration: float
     local_limit: float
     omega: float = .6
+    kind: str = 'force'
+    mode: str = 'maximum'  # legacy callers; scenarios specify mode
+    base: float = 10.
+    gamma: float = 2.
+    efficiency: float = 1.
+    load: float = 1.
+    support: float = 1.
 
 def cost(r, intensity):
     return r.power * (r.omega * intensity + (1-r.omega)*intensity**2)
