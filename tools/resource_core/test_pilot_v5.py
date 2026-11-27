@@ -9,6 +9,7 @@ from scenarios import S, Action, SCENARIOS
 from run_pilot import simulate
 from campaign import connect,execute,tasks,export
 from campaign_analysis import analyze,core_check
+from campaign_sensitivity import compare_databases
 from distribution import summarize,METRICS,KEY
 from pareto import fronts
 from task_requirements import floors_for
@@ -84,7 +85,7 @@ class PilotV5Tests(unittest.TestCase):
     def test_checkpoint_resume_and_parallel(self):
         configs=[next(x for x in configurations() if x[:3]==("human",1,"equal"))]
         cases=[S("rest",.1)]
-        manifest=dict(total=4,configs=[x[:3] for x in configs],repeats=1)
+        manifest=dict(total=4,configs=[x[:3] for x in configs],repeats=1,scenarios=["rest"],dt=.05,seconds=None)
         with tempfile.TemporaryDirectory() as root:
             p=Path(root)
             a=connect(p/"a.db",manifest)
@@ -104,6 +105,9 @@ class PilotV5Tests(unittest.TestCase):
             result=analyze(p/"a.db",p/"core.json",p/"pareto.csv")
             self.assertTrue(result["complete"])
             self.assertEqual(result["core_failures"],0)
+            self.assertEqual(compare_databases(p/"a.db",p/"b.db",p/"sensitivity.csv"),4)
+            with (p/"sensitivity.csv").open(newline="",encoding="utf-8") as f:
+                self.assertTrue(all(float(r["max_abs_delta"])==0 for r in csv.DictReader(f)))
 
     def test_distribution_quantiles(self):
         with tempfile.TemporaryDirectory() as root:
